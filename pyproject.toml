@@ -1,0 +1,93 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zolai-tts"
+version = "0.1.0"
+description = "Text-to-Speech research and development for Tedim Zolai (low-resource language)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "TBD" }
+authors = [{ name = "Zolai-AI Contributors" }]
+keywords = ["tts", "text-to-speech", "tedim", "zolai", "zomi", "low-resource", "speech"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "numpy>=1.26",
+  "soundfile>=0.12",
+  "librosa>=0.10",
+  "pydub>=0.25",
+  "phonemizer>=3.2",
+  "num2words>=0.5",
+  "pandas>=2.2",
+  "jsonschema>=4.22",
+  "pyyaml>=6.0",
+  "tqdm>=4.66",
+  "rich>=13.7",
+]
+
+[project.optional-dependencies]
+# Install one training backend at a time; they have heavy/conflicting deps.
+piper = [
+  "piper-tts>=1.2; python_version < '3.13'",
+  "onnxruntime>=1.18",
+]
+coqui = [
+  "TTS>=0.22; python_version < '3.12'",
+]
+mms = [
+  "transformers>=4.44",
+  "torch>=2.3",
+  "accelerate>=0.33",
+  "datasets>=2.20",
+]
+eval = [
+  "jiwer>=3.0",
+  # UTMOS/MCD tools are often installed from model repos; pin after validation.
+]
+dev = [
+  "pytest>=8.2",
+  "pytest-cov>=5.0",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "types-PyYAML",
+  "types-jsonschema",
+]
+
+[project.urls]
+Homepage = "https://github.com/Zolai-AI/zolai-tts"
+Repository = "https://github.com/Zolai-AI/zolai-tts"
+Issues = "https://github.com/Zolai-AI/zolai-tts/issues"
+
+[project.scripts]
+zolai-tts-prepare = "zolai_tts.data.preprocess:main"
+zolai-tts-synth = "zolai_tts.inference.synthesize:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/zolai_tts"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["zolai_tts"]
+strict = false
+ignore_missing_imports = true

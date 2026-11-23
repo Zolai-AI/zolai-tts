@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Audio / large data (keep metadata/schemas tracked)
+dataset/raw/
+dataset/wav/
+dataset/audio/
+dataset/processed/
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+!examples/**/*.wav
+
+# Model artifacts / checkpoints
+checkpoints/
+outputs/
+runs/
+wandb/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Local scratch
+tmp/
+.cache/

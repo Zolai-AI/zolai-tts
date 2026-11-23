@@ -1,0 +1,12 @@
+LICENSE TBD
+
+This repository's code, dataset, and model licenses have not been finalized yet.
+
+Before selecting a license, review:
+- Upstream code/framework licenses (e.g., Piper, Coqui TTS, Transformers, phonemizer).
+- Dataset/source permissions and consent for all audio and text.
+- Trained model/checkpoint redistribution rights, including base model licenses.
+- Whether code, datasets, and model weights should use separate licenses.
+
+Until a license is added, no blanket permission is granted beyond what applicable law allows.
+Contributors should not add third-party code, data, or model artifacts without compatible licensing and provenance.
