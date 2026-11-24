@@ -2,11 +2,13 @@
 
 ## Approach
 
-[Describe the overall development approach — e.g. Build
-this project incrementally using a spec-driven workflow.
-Context files define what to build, how to build it, and
-the current state of progress. Always implement against
-these specs — do not infer or invent behavior from scratch.]
+Read `project.yaml`, then the context files in the order recorded in
+AGENTS.md, then the committed research docs before any architectural decision. Build
+the research direction incrementally and spec-first: `project-overview.md` defines goals,
+`architecture.md` records PROPOSED boundaries, `ui-context.md` records that there is no
+UI in HEAD, `code-standards.md` defines Python conventions, and `progress-tracker.md`
+records state. Do not present PROPOSED source paths as implemented. Source: AGENTS.md,
+docs/architecture.md, git ls-tree -r HEAD.
 
 ## Scoping Rules
 
@@ -28,10 +30,9 @@ these specs — do not infer or invent behavior from scratch.]
 
 Split an implementation step if it combines:
 
-- [Concern one — e.g. UI changes and background task changes]
-- [Concern two — e.g. Multiple unrelated API routes]
-- [Concern three — e.g. Behavior not clearly defined in
-  the context files]
+- Tedim normalization/G2P rules versus framework adapter configuration (source: docs/architecture.md).
+- Dataset schema and metadata changes versus pipeline code (source: docs/architecture.md).
+- Behaviour not defined in HEAD README.md or `docs/architecture.md` (source: README.md, docs/architecture.md).
 
 If a change cannot be verified end to end quickly,
 the scope is too broad — split it.
@@ -69,8 +70,9 @@ implementing:
 
 Do not modify the following unless explicitly instructed:
 
-- [e.g. components/ui/* — generated UI library components]
-- [e.g. Any third-party library internals]
+- `dataset/` artifacts — schemas are versioned, but large audio, corpora and checkpoints stay outside git (source: docs/architecture.md, AGENTS.md).
+- `docs/` — committed architecture and guidelines are the current PROPOSED source of truth until implementation exists (source: git ls-tree -r HEAD -- docs).
+- `src/` — empty in HEAD; any added package layout must be recorded in `docs/architecture.md` and this context set first (source: git ls-tree -r HEAD -- src, AGENTS.md).
 
 ## Keeping Docs in Sync
 
@@ -98,18 +100,18 @@ changes — **mandatory, not optional**:
 1. The current unit works end to end within its defined scope
 2. No invariant defined in `architecture.md` was violated
 3. `progress-tracker.md` reflects the completed work
-4. `npm run build` passes
+4. The documented scaffold validation `python scripts/prepare_dataset.py --help` works once the PROPOSED `scripts/` path exists; no build script is documented in HEAD (source: README.md, git ls-tree -r HEAD).
 
 ## Environment Divergence
 
 When a check passes in one environment but fails in another
 (e.g. local vs CI vs on-box), record the delta before adjudicating:
 
-- [runtime version — e.g. `node --version` here vs there]
-- [dependency tree — lockfile hash here vs there]
-- [env vars and secret presence — names only, never values]
-- [network reachability — what the failing step must reach]
-- [filesystem paths — what the failing step must read/write]
+- Runtime version — Python is declared in `project.yaml` and `pyproject.toml`; uv is the declared package manager; exact versions are UNKNOWN — source: project.yaml, pyproject.toml.
+- Dependency tree — no lockfile is present in HEAD (source: git ls-tree -r HEAD).
+- Env vars and secret presence — names only, never values: no environment variables are declared in HEAD manifests; do not commit API keys, tokens or private speaker data (source: pyproject.toml, README.md, AGENTS.md).
+- Network reachability — Hugging Face and Kaggle are named as PROPOSED hosts for large artifacts (source: docs/architecture.md).
+- Filesystem paths — `docs/` is committed, `src/` is empty and `dataset/`, `configs/`, `scripts/` are PROPOSED paths (source: git ls-tree -r HEAD, README.md).
 
 A failure explained entirely by a recorded delta is an environment gap,
 not a code regression — fix the environment or pin the dependency.
@@ -138,3 +140,4 @@ bash scripts/session-claims.sh release "$PWD"
 
 Claims auto-expire after 30 min without heartbeat (`gc` purges them). Set
 `PCORE_SESSION_ID` in your session env for stable identity across shells.
+

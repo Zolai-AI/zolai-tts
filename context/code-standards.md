@@ -2,52 +2,39 @@
 
 ## General
 
-- [Principle — e.g. Keep modules small and single-purpose]
-- [Principle — e.g. Fix root causes, do not layer workarounds]
-- [Principle — e.g. Do not mix unrelated concerns in one
-  component or route]
+- Focus on Tedim speech synthesis research and tooling (source: AGENTS.md).
+- Read `README.md` and `context/` files before architectural decisions (source: AGENTS.md).
+- Keep datasets, models and large artifacts out of git unless explicitly tracked through the chosen artifact workflow (source: AGENTS.md).
+- Keep language ground truth at ZVS 2018 orthography; this is RAG/embeddings-first research, not raw fine-tuning (source: workspace AGENTS.md recorded in repo AGENTS.md).
 
 ## TypeScript
 
-- [Rule — e.g. Strict mode is required throughout the project]
-- [Rule — e.g. Avoid any — use explicit interfaces or narrowly
-  scoped types]
-- [Rule — e.g. Validate unknown external input at system
-  boundaries before trusting it]
+- N/A — no TypeScript source in HEAD (source: git ls-tree -r HEAD, pyproject.toml).
 
-## [Framework — e.g. Next.js]
+## Python
 
-- [Convention — e.g. Default to server components]
-- [Convention — e.g. Add use client only when browser
-  interactivity requires it]
-- [Convention — e.g. Keep route handlers focused on a
-  single responsibility]
+- `pyproject.toml` declares the package, dependency groups, console scripts, Hatchling build backend and Ruff/pytest/mypy configuration (source: pyproject.toml).
+- Ruff line length and lint selection, pytest test path and mypy settings are defined in `pyproject.toml`; follow the manifest rather than a separate config file (source: pyproject.toml).
+- Install the dev extra and validate with the documented scaffold command; no build script exists in HEAD (source: README.md, pyproject.toml).
+- Python remains authoritative for language tooling; no NestJS or Rust service layer is added (source: AGENTS.md).
 
 ## Styling
 
-- [Rule — e.g. Use CSS custom property tokens — no
-  hardcoded hex values]
-- [Rule — e.g. Follow the border radius scale defined
-  in ui-context.md]
+- N/A — no UI in HEAD (source: git ls-tree -r HEAD).
 
 ## API Routes
 
-- [Rule — e.g. Validate and parse request input before
-  any logic runs]
-- [Rule — e.g. Enforce auth and ownership before any mutation]
-- [Rule — e.g. Return consistent, predictable response shapes]
+- N/A — no service endpoints exist in HEAD; the architecture document is PROPOSED (source: git ls-tree -r HEAD, docs/architecture.md).
 
 ## Data and Storage
 
-- [Rule — e.g. Metadata belongs in the database]
-- [Rule — e.g. Large generated content belongs in file
-  or blob storage]
-- [Rule — e.g. Do not store large content directly in
-  the database]
+- Version dataset schemas in `dataset/schemas/`; track only small metadata and examples (source: docs/architecture.md).
+- Keep large audio, corpora and checkpoints in shared storage or external dataset hosts (source: docs/architecture.md, AGENTS.md).
+- Never commit API keys, tokens, private speaker data or unpublished recordings (source: README.md).
 
 ## File Organization
 
-- `[folder]/` — [What belongs here]
-- `[folder]/` — [What belongs here]
-- `[folder]/` — [What belongs here]
-- `[folder]/` — [What belongs here]s
+- `docs/` — committed architecture, dataset, pronunciation, framework and roadmap notes (source: git ls-tree -r HEAD -- docs).
+- `src/` — empty in HEAD; the `zolai_tts` package layout is PROPOSED (source: git ls-tree -r HEAD -- src, docs/architecture.md).
+- `configs/`, `dataset/`, `research/`, `scripts/`, `tests/`, `examples/` — PROPOSED layout from README.md, not present in HEAD (source: README.md, git ls-tree -r HEAD).
+- `pyproject.toml` — package metadata and tooling configuration (source: pyproject.toml).

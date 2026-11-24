@@ -2,69 +2,74 @@
 
 ## Stack
 
-| Layer     | Technology                  | Role   |
-| --------- | --------------------------- | ------ |
-| Framework | [e.g. Next.js + TypeScript] | [Role] |
-| UI        | [e.g. Tailwind + shadcn/ui] | [Role] |
-| Auth      | [e.g. Clerk]                | [Role] |
-| Database  | [e.g. Prisma + PostgreSQL]  | [Role] |
-| [Layer]   | [Technology]                | [Role] |
+Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md`;
+no runtime or dependency versions are asserted here.
+
+| Layer | Technology | Role | Source |
+|-------|-----------|------|--------|
+| Language | Python | Research tooling language | project.yaml, pyproject.toml |
+| Packaging | Hatchling | Build backend | pyproject.toml |
+| Package manager | uv | Declared package manager | project.yaml |
+| Audio | librosa, soundfile, pydub | Resampling, trimming, feature extraction | pyproject.toml, README.md |
+| Text | num2words, phonemizer | Number handling and phonemization | pyproject.toml, README.md |
+| Data | pandas, jsonschema, pyyaml | Metadata validation and packaging | pyproject.toml, docs/architecture.md |
+| CLI | tqdm, rich | Progress and terminal output | pyproject.toml |
+| Training backends | Piper, Coqui TTS, Transformers/MMS | PROPOSED framework adapters | README.md, docs/architecture.md |
+| Evaluation | UTMOS, MCD, MOS | PROPOSED objective and human evaluation | README.md, docs/architecture.md |
+| Testing | pytest, ruff, mypy | Dev tooling declared in the manifest | pyproject.toml |
 
 ## System Boundaries
 
-- `[folder]` — [What this folder owns and is responsible for]
-- `[folder]` — [What this folder owns and is responsible for]
-- `[folder]` — [What this folder owns and is responsible for]
-- `[folder]` — [What this folder owns and is responsible for]
+The `src/` tree is empty in HEAD (source: `git ls-tree -r --name-only HEAD -- src`), so
+all source paths below are PROPOSED from `README.md` and `docs/architecture.md`.
+
+- `docs/architecture.md` — committed PROPOSED pipeline and component boundaries (source: git ls-tree -r HEAD -- docs, docs/architecture.md).
+- `docs/dataset-guidelines.md`, `docs/pronunciation.md`, `docs/framework-selection.md`, `docs/roadmap.md` — committed research documentation (source: git ls-tree -r HEAD -- docs).
+- `src/zolai_tts/frontend/` — PROPOSED normalization and G2P with Tedim-specific rules (source: docs/architecture.md).
+- `src/zolai_tts/data/` — PROPOSED dataset validation and format conversion (source: docs/architecture.md).
+- `src/zolai_tts/training/`, `src/zolai_tts/inference/`, `src/zolai_tts/evaluation/` — PROPOSED framework adapters and evaluation helpers (source: docs/architecture.md).
+- `configs/`, `dataset/schemas/`, `research/`, `scripts/`, `tests/` — PROPOSED layout documented in README.md, not present in HEAD (source: README.md, git ls-tree -r HEAD).
 
 ## Storage Model
 
-- **[Storage type e.g. Database]**: [What lives here —
-  e.g. metadata, ownership, relationships]
-- **[Storage type e.g. Blob/File Storage]**: [What lives
-  here — e.g. generated files, media, large artifacts]
+- **Versioned schemas and small metadata**: PROPOSED in `dataset/schemas/` and `dataset/metadata/` (source: docs/architecture.md, README.md).
+- **Large artifacts**: audio, corpora and checkpoints stay outside git in shared storage, Hugging Face or Kaggle (source: docs/architecture.md, AGENTS.md).
+- **Application database**: N/A — source: pyproject.toml, git ls-tree -r HEAD.
 
 ## Auth and Access Model
 
-- [How authentication works — e.g. Every user signs in
-  via Clerk]
-- [How ownership works — e.g. Every project has a single
-  owner]
-- [How access control works — e.g. Only the owner or a
-  collaborator can mutate project resources]
+- No application authentication, ownership or access-control model exists in HEAD (source: git ls-tree -r HEAD, docs/architecture.md).
+- Do not commit API keys, tokens, private speaker data or unpublished recordings (source: README.md, AGENTS.md).
 
 ## System Design & Infrastructure
 
-Fill in the concepts relevant to this project. Leave rows
-blank if not yet decided — the list serves as a checklist.
-
-| Concept | Service / Tech | Notes |
-|---------|---------------|-------|
-| **Compute** | [e.g. Next.js on Vercel, Cloudflare Workers, Node server] | Serverless vs container vs VM |
-| **Database** | [e.g. PostgreSQL via Neon, Supabase, Turso] | Scaling approach: read replicas, connection pooling, sharding |
-| **Object Storage** | [e.g. R2, S3, Cloudflare Images] | File uploads, generated content, media, backups |
-| **CDN** | [e.g. Cloudflare, Vercel Edge, Fastly] | Static assets, global caching, edge functions |
-| **Caching** | [e.g. Redis, Cloudflare Cache, in-memory] | Cache strategy: stale-while-revalidate, CDN cache keys, distributed cache |
-| **Queue / Async** | [e.g. BullMQ, Cloudflare Queues, RabbitMQ] | Background jobs, email delivery, webhook dispatch, retries with backoff |
-| **Rate Limiting** | [e.g. Upstash, Cloudflare Rate Limiting, Token bucket] | Per-user, per-IP, per-endpoint tiers |
-| **Load Balancing** | [e.g. Cloudflare, ALB, DNS round-robin] | Multi-region, session affinity, health checks |
-| **Microservices** | [e.g. Internal APIs, Workers, Docker services] | Service boundaries, inter-service auth, sync vs event-driven |
-| **Observability** | [e.g. OpenTelemetry, Sentry, Grafana, Cloudflare Analytics] | Logs, metrics, traces, alerting, dashboards |
-| **Search** | [e.g. Typesense, Meilisearch, Algolia, pgvector] | Full-text search, vector embeddings, faceted filters |
-| **Streaming / Realtime** | [e.g. WebSockets, SSE, Realtime Supabase, Durable Objects] | Live updates, collaborative editing, push notifications |
+| Concept | Service / Tech | Notes | Source |
+|---------|---------------|-------|--------|
+| **Compute** | N/A — source: pyproject.toml | No service runtime in HEAD | pyproject.toml |
+| **Database** | N/A — source: pyproject.toml | No database dependency | pyproject.toml |
+| **Object Storage** | Shared storage / Hugging Face / Kaggle | PROPOSED home for large artifacts | docs/architecture.md |
+| **CDN** | N/A — source: docs/architecture.md | No CDN decision documented | docs/architecture.md |
+| **Caching** | N/A — source: docs/architecture.md | No cache layer documented | docs/architecture.md |
+| **Queue / Async** | N/A — source: pyproject.toml | No queue dependency | pyproject.toml |
+| **Rate Limiting** | N/A — source: docs/architecture.md | No service endpoint in HEAD | docs/architecture.md |
+| **Load Balancing** | N/A — source: docs/architecture.md | No service endpoint in HEAD | docs/architecture.md |
+| **Microservices** | zolai-core integration | PROPOSED source of shared linguistic resources | docs/architecture.md |
+| **Observability** | Local logs or optional experiment tracking | PROPOSED in README.md | README.md |
+| **Search** | N/A — source: docs/architecture.md | No search component documented | docs/architecture.md |
+| **Streaming / Realtime** | N/A — source: docs/architecture.md | Batch pipeline design only | docs/architecture.md |
 
 ## Scaling & Performance Constraints
 
-- [Expected traffic volume — e.g. 10K DAU, 1M requests/month]
-- [P99 latency target — e.g. <200ms for API, <1s for page load]
-- [Data growth estimate — e.g. 10GB/month, 1M new rows/month]
-- [Availability target — e.g. 99.9% uptime, multi-region failover]
-- [Budget constraint — e.g. PaaS free tier, <$50/mo infra cost]
+- Traffic volume: UNKNOWN — source: docs/architecture.md.
+- Latency target: UNKNOWN — source: docs/architecture.md.
+- Data growth estimate: UNKNOWN — source: docs/architecture.md.
+- Availability target: UNKNOWN — source: docs/architecture.md.
+- Budget constraint: UNKNOWN — source: docs/architecture.md.
 
 ## Invariants
 
-1. [Rule the codebase must never violate — e.g. Request
-   handlers do not run long-lived background work]
-2. [Invariant two]
-3. [Invariant three]
-4. [Invariant four]
+1. Framework-first: Tedim-specific language logic in `frontend/`, synthesis delegated to established frameworks (source: docs/architecture.md).
+2. Framework-specific code stays in adapters and `configs/`; no from-scratch model implementation (source: docs/architecture.md).
+3. Large audio and checkpoints stay outside git (source: docs/architecture.md, AGENTS.md).
+4. Dataset schemas are versioned in `dataset/schemas/` (source: docs/architecture.md).
+5. Language ground truth is ZVS 2018 orthography; RAG/embeddings-first is the org strategy, not raw fine-tuning (source: workspace AGENTS.md as recorded in repo AGENTS.md alignment).
