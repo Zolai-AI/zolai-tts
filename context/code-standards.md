@@ -15,9 +15,12 @@
 
 - `pyproject.toml` declares the package, dependency groups, console scripts, Hatchling backend and Ruff/pytest/mypy configuration; follow it rather than a separate config file.
 - Use `uv` for all environments. Run `uv run --extra dev python -m pytest` (not an external `pytest` binary), plus Ruff and mypy.
-- Base imports must not import optional backends, read API keys or make network calls. `piper` and `google-genai` are imported lazily inside provider methods.
-- Canonical provider keys are `piper` and `gemini`; do not add aliases such as `local`.
-- Default tests run offline; network tests use the `live` marker and require both `ZOLAI_TTS_RUN_LIVE=1` and a key.
+- Base imports must not import optional backends, read API keys or make network calls. Optional packages (`piper`, `google-genai`, `openai`, `litellm`, `pydantic-ai-slim`, `gradio`) are imported lazily inside methods/functions.
+- Canonical provider keys are `piper`, `gemini`, and `openrouter`; do not add aliases such as `local`.
+- Config precedence is CLI > config YAML > environment > defaults. Use `ai_sdk.config.resolve_audio_config`; never persist or log secret values. Redacted config views may expose only key presence/env name.
+- Hosted providers (Gemini/OpenRouter/OpenAI-compatible) are experimental for Tedim/Zolai/Zomi and have no native support claims. No unlimited-free claims; document quota/free-tier/data-use limits and require informed consent before sending community data.
+- Optional AI adapters are capability-gated: LiteLLM/PydanticAI are not canonical TTS execution paths unless explicitly implemented and tested; prefer OpenRouter/OpenAI-compatible adapter for `/audio/speech`.
+- Default tests run offline; network tests use the `live` marker and require both `ZOLAI_TTS_RUN_LIVE=1` and a key. Mock SDKs for 4xx/5xx/error mapping; no live network/quota in default tests.
 - `NUMBER_WORDS` is an explicit no-op stub; do not invent Tedim numerals or copy ZVS tables across repos.
 - Python remains authoritative for language tooling; no NestJS or Rust service layer is added (source: AGENTS.md).
 
@@ -31,7 +34,7 @@
 
 - `zolai-tts` is the management CLI (`src/zolai_tts/cli.py`) with subcommands for `menu`, `ui start|stop|restart|status|logs|open`, `doctor`, `check|test|lint|typecheck`, `prepare`, `synth`, `ui-app`, and `gemini-smoke`. It orchestrates existing modules via subprocess/module calls; it must not duplicate synthesis logic.
 - Runtime state/logs are stored outside git (preferred `/tmp/opencode/zolai-tts-<uid>/`, fallback XDG runtime/cache). State JSON contains only PID/host/port/cmd/started_at/log_path/cwd; never store API keys, tokens, or secret values.
-- `doctor` and `gemini-smoke` report environment key presence only and must never print or persist secret values. `gemini-smoke --live` is opt-in and uses quota/network.
+- `doctor` and `*-smoke` commands report environment key presence only and must never print or persist secret values. `gemini-smoke --live` and `openrouter-smoke --live` are opt-in and use quota/network/credits.
 - UI process management must validate PID and cmdline contains `zolai_tts.ui.app` before trusting state; clean stale state.
 - CLI/runtime tests must be offline: mock subprocess, os.kill, xdg-open, env, and time; use temp state dirs.
 

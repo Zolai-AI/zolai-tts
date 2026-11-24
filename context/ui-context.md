@@ -18,11 +18,11 @@ Default Gradio component radius (source: `src/zolai_tts/ui/app.py`).
 
 ## Component Library
 
-Gradio Blocks (optional `ui` extra, `gradio>=6.32,<7`) for a local-only synth/dry-run form (source: `pyproject.toml`, `src/zolai_tts/ui/app.py`).
+Gradio Blocks (optional `ui` extra, `gradio>=6.32,<7`) for a local-only synth/dry-run form (source: `pyproject.toml`, `src/zolai_tts/ui/app.py`). Includes optional OSS mic/upload `Audio` wiring for local media (not persisted/uploaded by default).
 
 ## Layout Patterns
 
-Single-page form: text input, provider/language selectors, voice/out path fields, dry-run checkbox, run button, JSON result, audio output. Localhost bind, `share=False` by default; no auth, no persistent queue (source: `src/zolai_tts/ui/app.py`).
+Single-page form: text input, provider/language selectors, voice/model/base-url/response-format fields, output path, optional mic/upload audio input (OSS/local), dry-run checkbox, run button, JSON result, audio output. Localhost bind, `share=False` by default; no auth, no persistent queue (source: `src/zolai_tts/ui/app.py`).
 
 ## Icons
 

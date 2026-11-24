@@ -28,7 +28,7 @@ Open-source research and development of Text-to-Speech (TTS) technology for **Te
 | TTS training | [Piper](https://github.com/rhasspy/piper) (VITS-based) | Lightweight, deployable ONNX voices; real Tedim/Zolai voice path |
 | TTS experimentation | Coqui TTS / VITS | Research experiments in a **separate environment** (pins `pandas<2.0`) |
 | Low-resource bootstrapping | [Meta MMS-TTS](https://huggingface.co/facebook/mms-tts) | Documented research path; no adapter in this slice |
-| Optional hosted demos | Gemini TTS (`gemini-3.8-flash-tts`) | Zolai/Zomi demo requests only; **experimental**, no native support |
+| Optional hosted demos | Gemini TTS (`gemini-3.8-flash-tts`) / OpenRouter TTS (OpenAI-compatible) | Zolai/Zomi demo requests only; **experimental**, no native support |
 | Audio processing | librosa, soundfile, pydub | Resampling, trimming, feature extraction |
 | Text normalization | num2words + custom Tedim rules | Numbers, abbreviations, punctuation, orthography normalization |
 | G2P / phonemization | phonemizer + rule-based fallback | Provisional grapheme segmentation; ZVS 2018 digraph inventory |
@@ -80,6 +80,11 @@ uv run zolai-tts prepare -- --input dataset/metadata/sample.jsonl \
 uv run zolai-tts synth -- --text "Pasian in leitung a piangsak hi." \
   --provider piper --voice /replace/with/real/zolai-voice.onnx \
   --language zolai --out /tmp/opencode/zolai-tts/out/synth.wav --dry-run
+
+# OpenRouter dry-run (no key/network; requires voice/model supported by endpoint)
+uv run zolai-tts synth -- --text "Hello" --provider openrouter --voice alloy \
+  --model openai/gpt-4o-mini-tts --response-format mp3 --language en \
+  --out /tmp/opencode/zolai-tts/out/or.mp3 --dry-run
 ```
 
 `--dry-run` writes no audio and needs no key or backend. Real synthesis requires a
@@ -99,6 +104,7 @@ uv run zolai-tts ui stop
 uv run zolai-tts ui restart
 uv run zolai-tts check              # ruff + mypy + pytest
 uv run zolai-tts gemini-smoke       # env key presence only; --live is opt-in
+uv run zolai-tts openrouter-smoke   # env key presence only; --live is opt-in (uses quota/credits)
 ```
 
 - The CLI orchestrates existing modules; it does not duplicate synthesis logic.
@@ -116,24 +122,51 @@ uv run --extra ui zolai-tts-ui  # foreground, local only, share=False by default
 
 - The UI is a lightweight local research/demo surface; it is not a hosted production service.
 - Gradio is an optional dependency (`ui` extra) and is imported lazily — base installs/imports do not require it.
-- Use **Dry run** to validate provider/language/voice/request planning with no key/model/network.
+- Use **Dry run** to validate provider/language/voice/model/base-url/request planning with no key/model/network.
+- Mic/Upload wiring uses OSS Gradio `Audio(sources=["microphone","upload"])` for local media; it is not persisted or uploaded by default.
 - Piper real synthesis requires a local ONNX voice; `piper-tts` is unavailable on Python >=3.13, so use dry-run or an external Python <3.13 Piper environment for real Piper audio.
-- Gemini is optional/experimental for Tedim/Zolai/Zomi, warns on use, and reads keys only from env at synthesis time. Never commit keys.
+- Gemini/OpenRouter are optional/experimental for Tedim/Zolai/Zomi, warn on use, and read keys only from env at synthesis time. Never commit keys.
 
-## Optional Gemini Provider
+## Optional Hosted Providers / AI SDK Layer
+
+### Gemini (optional)
 
 ```bash
 # Set ZOLAI_TTS_GEMINI_API_KEY in your shell; never commit its value.
 uv run --extra gemini zolai-tts-synth --text "Pasian" \
-  --provider gemini --voice Kore --language zolai \
+  --provider gemini --voice Kore --language zolai --model gemini-3.8-flash-tts \
   --out /tmp/opencode/zolai-tts/out/gemini.wav
 ```
 
+### OpenRouter (optional, OpenAI-compatible)
+
+```bash
+# Set ZOLAI_TTS_OPENROUTER_API_KEY in your shell; never commit its value.
+uv sync --extra openrouter
+uv run --extra openrouter zolai-tts-synth --text "Hello" \
+  --provider openrouter --voice alloy --model openai/gpt-4o-mini-tts \
+  --response-format mp3 --language en \
+  --out /tmp/opencode/zolai-tts/out/openrouter.mp3
+```
+
+### Optional AI SDK adapters
+
+```bash
+uv sync --extra openrouter      # OpenAI SDK / OpenAI-compatible endpoints
+uv sync --extra ai-litellm      # LiteLLM adapter (capability-gated)
+uv sync --extra ai-pydantic     # PydanticAI config/metadata adapter
+```
+
+- **Internal AI SDK layer:** `src/zolai_tts/ai_sdk/` resolves model/base_url/voice/format from CLI > config YAML > env > defaults and provides redaction-safe config views.
+- **OpenAI-compatible layer:** uses `openai` SDK against OpenRouter or other OpenAI-compatible `/audio/speech` endpoints (`--base-url`).
+- **LiteLLM/PydanticAI:** optional, lazy, capability-gated adapters for broader model/config wiring; TTS execution support depends on selected backend/model.
+- **OpenCode/Ollama local wiring:** for OpenAI-compatible local endpoints, set provider `openrouter`-style base URL/model/voice via CLI or config (e.g. `--base-url http://localhost:11434/v1 --model <local-model>` where endpoint supports `/audio/speech`). Dry-run works without keys/network; live support depends on local endpoint capabilities.
+
 - Accepted `--language` values: `ted`, `zolai`, `zomi`, `en`. **Mizo is not used.**
-- Gemini has **no native Tedim/Zolai/Zomi TTS support**; these requests are experimental, are not ZVS 2018 ground truth, and emit a warning. Do not ship them as the community voice — use Piper.
-- Free-tier content **may be used to improve Google products**. Do not send community text or voice data without informed consent and a license decision.
-- Requires `google-genai>=2.25.0` and the `v1beta` Interactions API. Keys are read only at synthesis time; imports make no network calls.
-- The live smoke test is opt-in: `ZOLAI_TTS_RUN_LIVE=1` plus a key. By default it reports `SKIPPED`.
+- Gemini/OpenRouter have **no native Tedim/Zolai/Zomi TTS support**; these requests are experimental, are not ZVS 2018 ground truth, and emit warnings. Do not ship them as the community voice — use Piper.
+- Hosted provider free tiers/credits/quotas are limited and policies vary; **there is no unlimited-free path**. Gemini free-tier content may be used to improve Google products. Do not send community text or voice data without informed consent and a license decision.
+- Keys are read only from environment at synthesis time (`ZOLAI_TTS_GEMINI_API_KEY`/`GEMINI_API_KEY`, `ZOLAI_TTS_OPENROUTER_API_KEY`/`OPENROUTER_API_KEY`). Imports make no network calls; dry-run makes no network calls.
+- Live smoke tests are opt-in (`gemini-smoke --live`, `openrouter-smoke --live`) and use quota/credits.
 
 ## Data and Licensing
 

@@ -1,7 +1,24 @@
-# Example configuration only. No API key, voice model or audio is committed.
-# Provider keys are canonical: piper (real Zolai voice) | gemini (optional).
+# Example configuration only. No API key, voice model, audio, or secrets committed.
+# Provider keys are canonical: piper (real Zolai voice) | gemini (optional hosted) | openrouter (optional hosted/OpenAI-compatible).
 provider: piper
 voice: /replace/with/real/zolai-voice.onnx
 language: zolai
 text: "Pasian in leitung a piangsak hi."
 out: /tmp/opencode/zolai-tts/out/synth.wav
+
+# Optional model/config fields (CLI overrides config; env overrides defaults):
+# model: gemini-3.8-flash-tts
+# model: openai/gpt-4o-mini-tts
+# base_url: https://openrouter.ai/api/v1
+# base_url: http://localhost:11434/v1  # local OpenAI-compatible endpoint (Ollama/OpenCode-style), if it supports /audio/speech
+# response_format: wav
+
+# OpenRouter/OpenAI-compatible example (safe placeholders only):
+# provider: openrouter
+# voice: alloy
+# language: en
+# model: openai/gpt-4o-mini-tts
+# base_url: https://openrouter.ai/api/v1
+# response_format: mp3
+# Set ZOLAI_TTS_OPENROUTER_API_KEY or OPENROUTER_API_KEY in env at runtime; never commit keys.
+# Hosted providers have quotas/free-tier/data-use limits; no unlimited-free claims.
