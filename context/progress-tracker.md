@@ -46,9 +46,9 @@ Update this file after every meaningful implementation change.
 ## Verification Evidence
 
 - `uv run --extra dev python -m pytest`: 38 passed, 1 skipped (offline; live Gemini skipped).
-- 2026-11-24 — Environment divergence, NOT a regression: bare `PYTHONPATH=src python3 -m pytest -q -rs` on this box reports 36 passed / 3 skipped (39 total) — 2 `importorskip` skips because `phonemizer` is not installed here, plus 1 opt-in live skip. `phonemizer>=3.2` is a base dependency (`pyproject.toml:28`), so the documented `uv run --extra dev` path is expected to report 38 passed / 1 skipped; that result was NOT observed on this box and is not claimed here.
+- 2026-11-24 — Environment divergence, NOT a regression: bare `PYTHONPATH=src python3 -m pytest -q -rs` on this box reports 39 passed / 3 skipped (42 total, 0 failures) at current HEAD — 2 `importorskip` skips because `phonemizer` is not installed here, plus 1 opt-in live skip. Before the IPA scaffold commit the same bare command reported 36 passed / 3 skipped (39 total). `phonemizer>=3.2` is a base dependency (`pyproject.toml:28`), so the documented `uv run --extra dev` path is expected to report 38 passed / 1 skipped at the scaffold's parent commit; that result was NOT observed on this box and is not claimed here.
 - `uv run --extra dev python -m ruff check src tests`: all checks passed.
-- `uv run --extra dev python -m mypy src`: no issues in 18 source files.
+- `uv run --extra dev python -m mypy src`: no issues in 19 source files (observed locally: `python3 -m mypy src`, 19 files).
 - `pytest --markers` registers `live`; `pytest -m live -rs` reports one skip with no key.
 
 ## Session Notes

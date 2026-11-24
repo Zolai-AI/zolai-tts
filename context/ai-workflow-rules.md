@@ -72,7 +72,7 @@ Do not modify the following unless explicitly instructed:
 
 - `dataset/` artifacts — schemas are versioned, but large audio, corpora and checkpoints stay outside git (source: docs/architecture.md, AGENTS.md).
 - `docs/` — committed architecture and guidelines are the current source of truth for the implemented scaffold; `docs/roadmap.md` is deprecated (source: `docs/architecture.md`, `git ls-files docs`).
-- `src/` — 18 tracked files implement the package layout in HEAD; any added package layout must be recorded in `docs/architecture.md` and this context set first (source: `git ls-files src`, `docs/architecture.md`, AGENTS.md).
+- `src/` — the tracked files implement the package layout in HEAD (19 files at this commit; re-check with `git ls-files src` rather than relying on a fixed count); any added package layout must be recorded in `docs/architecture.md` and this context set first (source: `git ls-files src`, `docs/architecture.md`, AGENTS.md).
 
 ## Keeping Docs in Sync
 
