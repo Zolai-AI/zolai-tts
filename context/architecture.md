@@ -29,7 +29,8 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 - `src/zolai_tts/voice_lookup.py` — voice resolution: API-first (`GET /api/v1/tts/voices/{voice_key}`), read-only SQLite fallback via `ZOLAI_DB_PATH` (`file:...?mode=ro`). Dry-run resolves offline (never touches the network). Unknown/inactive/missing `voice_key` fails loudly — there is no silent default voice (source: `src/zolai_tts/voice_lookup.py`, `tests/test_voice_resolution.py`).
 - `src/zolai_tts/data/provenance.py` — tracked batch manifest (`schema_version`, `seed`, `provider`, `model`, `voice_key`, `legal_status`, `production_guarantee`, `tags_applied`, per-item `id`/`text`/`sha256`/`tags`/`style`/`audio_path`) plus the publish gate: only `legal_status == 'verified'` is publishable; `unverified` (free-tier terms) hard-blocks. `owner`/`license`/`consent_ref` live in the tracked manifest only, never in the registry DB (source: `src/zolai_tts/data/provenance.py`, `tests/test_batch_tts.py`).
 - `src/zolai_tts/ai_sdk/` — internal AI SDK layer for config/model/base-url/response-format resolution, redacted config views, OpenAI-compatible speech adapter, and capability-gated LiteLLM/PydanticAI adapters (source: `src/zolai_tts/ai_sdk/`).
-- `src/zolai_tts/ui/` — optional local Gradio research/demo UI over existing provider contracts; lazy Gradio import, localhost/`share=False` default, model/base-url/format inputs, mic/upload local media wiring, not a hosted production service (source: `src/zolai_tts/ui/app.py`, `pyproject.toml`).
+- `src/zolai_tts/catalog.py` — dynamic, env-aware provider/model/voice/format catalog; live fetch with non-secret fallbacks (source: `src/zolai_tts/catalog.py`).
+- `src/zolai_tts/server.py` + `web/` — optional FastAPI API and React/Vite/shadcn frontend; registry-driven providers, live catalog routes, synthesis/dry-run, local run and recording storage (source: `src/zolai_tts/server.py`, `web/src/App.tsx`).
 - `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py` — management CLI and UI process runtime control (start/stop/restart/status/logs/doctor/check/passthroughs, gemini/openrouter smoke). Orchestrates existing modules only; runtime state/logs outside git; no secret persistence (source: `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py`).
 - `src/zolai_tts/evaluation/` — implemented duration helper and Markdown report renderer (source: `src/zolai_tts/evaluation/`).
 - `configs/`, `dataset/schemas/`, `dataset/metadata/` — committed example config, versioned schemas and placeholder metadata (source: `configs/`, `dataset/`).
@@ -53,7 +54,7 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 
 | Concept | Service / Tech | Notes | Source |
 |---------|---------------|-------|--------|
-| Compute | N/A | Offline CLI tooling; optional local Gradio UI is localhost-only research/demo | pyproject.toml, src/zolai_tts/ui/app.py |
+| Compute | N/A | Offline CLI tooling + optional localhost-only FastAPI/React studio | pyproject.toml, src/zolai_tts/server.py, web/ |
 | Database | None owned; read-only view of the zolai-core TTS registry | API-first voice lookup, `mode=ro` SQLite fallback via `ZOLAI_DB_PATH` | src/zolai_tts/voice_lookup.py |
 | Object Storage | Shared storage / Hugging Face / Kaggle | Home for large artifacts | docs/architecture.md |
 | CDN / Cache / Queue | N/A | No hosted service endpoint | docs/architecture.md |

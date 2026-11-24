@@ -13,8 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added optional `gemini` extra (`google-genai>=2.25.0`) with a Zolai/Zomi demo adapter, lazy SDK import, v1beta Interactions request builder, free-tier/consent warning and opt-in `live` test marker.
 - Added OpenRouter/OpenAI-compatible TTS provider (`openrouter`) with env-only API key handling, dry-run request planning, and experimental Zolai/Zomi warnings.
 - Added internal `ai_sdk` layer for CLI > config > env > default model/config resolution, redacted config views, OpenAI-compatible speech adapter, and capability-gated LiteLLM/PydanticAI adapters (lazy imports, no base dependency).
-- Added CLI/UI model/base-url/response-format controls, OpenRouter smoke command, and local OSS mic/upload media wiring in Gradio UI (no persistence/upload by default).
+- Added CLI/UI model/base-url/response-format controls, OpenRouter smoke command, and local OSS mic/upload media wiring in the local UI (no persistence/upload by default).
 - Added versioned JSON Schemas, a placeholder `sample.jsonl`, `configs/example.yaml`, offline tests and documentation updates.
+
+- Replaced the Gradio UI with a local web studio: FastAPI API (`src/zolai_tts/server.py`) plus a React + Vite + Tailwind v4 + shadcn/ui frontend (`web/`). Dynamic provider/model/voice/format catalogs are fetched from live provider APIs using env keys (header only, never returned or stored), with curated offline fallbacks. Saved runs, audio and mic/upload recordings are local-only with sidecar metadata.
 
 ### Changed
 

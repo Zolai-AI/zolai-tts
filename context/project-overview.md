@@ -21,7 +21,7 @@ README.md, `src/zolai_tts/`.
 2. Grapheme segmentation uses the attested digraph inventory with a phonemizer fallback (source: `src/zolai_tts/frontend/g2p.py`, `phonemize.py`).
 3. `zolai-tts-prepare` validates JSONL metadata and writes a text manifest (source: `src/zolai_tts/data/`).
 4. `zolai-tts-synth` selects `piper` (real voice) or optional `gemini` (experimental Zolai/Zomi demo) and writes audio plus a result (source: `src/zolai_tts/inference/`, `providers/`).
-5. Optional `zolai-tts` management CLI can start/stop/restart/status/log the local Gradio UI, run doctor/checks, and passthrough to prepare/synth; runtime state stays outside git and never persists secrets (source: `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py`).
+5. Optional `zolai-tts` management CLI can start/stop/restart/status/log the local web API, run doctor/checks, and passthrough to prepare/synth; runtime state stays outside git and never persists secrets (source: `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py`).
 6. Evaluation helpers report duration and render a Markdown report (source: `src/zolai_tts/evaluation/`).
 
 ## Features
@@ -38,7 +38,7 @@ README.md, `src/zolai_tts/`.
 
 - Offline research tooling, schemas, small metadata, docs and tests (source: README.md, docs/architecture.md).
 - Local management CLI for UI lifecycle, diagnostics, checks, and tool passthroughs; state/logs outside git, no secret persistence (source: `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py`).
-- Optional local Gradio UI for synth/dry-run research demos (`ui` extra, localhost, `share=False` default) (source: `src/zolai_tts/ui/app.py`, README.md).
+- Optional local React/Vite web studio with FastAPI API for synth/dry-run research (`ui` extra, localhost by default, live dynamic catalogs) (source: `src/zolai_tts/server.py`, `web/src/App.tsx`, README.md).
 - Optional hosted provider for Zolai/Zomi demos with explicit warning (source: README.md, `src/zolai_tts/providers/gemini.py`).
 
 ### Out of Scope

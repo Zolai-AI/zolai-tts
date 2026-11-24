@@ -132,4 +132,12 @@ class GeminiProvider:
         )
 
 
-register_provider("gemini", lambda **options: GeminiProvider(**options))
+register_provider(
+    "gemini",
+    lambda **options: GeminiProvider(**options),
+    label="Gemini (hosted, experimental)",
+    voice_kind="name",
+    hosted=True,
+    note="Hosted Gemini TTS. No native Tedim/Zolai/Zomi support; experimental only.",
+    key_envs=("ZOLAI_TTS_GEMINI_API_KEY", "GEMINI_API_KEY"),
+)

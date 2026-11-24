@@ -125,7 +125,7 @@ def test_runtime_start_stop_status(
     monkeypatch.setattr(runtime.subprocess, "Popen", fake_popen)
     monkeypatch.setattr(runtime, "_pid_alive", lambda pid: pid == 4242)
     monkeypatch.setattr(
-        runtime, "_cmdline", lambda _pid: "python -m zolai_tts.ui.app --host 127.0.0.1"
+        runtime, "_cmdline", lambda _pid: "python -m zolai_tts.server --host 127.0.0.1"
     )
     monkeypatch.setattr(runtime.time, "sleep", lambda *_: None)
 
@@ -156,7 +156,7 @@ def test_runtime_stale_pid_cleaned(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         pid=99999,
         host="127.0.0.1",
         port=7860,
-        cmd=["python", "-m", "zolai_tts.ui.app"],
+        cmd=["python", "-m", "zolai_tts.server"],
         started_at="now",
         log_path=str(tmp_path / "ui.log"),
         cwd=str(tmp_path),

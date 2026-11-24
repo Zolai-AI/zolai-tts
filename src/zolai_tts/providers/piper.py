@@ -72,4 +72,11 @@ class PiperProvider:
         )
 
 
-register_provider("piper", lambda **options: PiperProvider(**options))
+register_provider(
+    "piper",
+    lambda **options: PiperProvider(**options),
+    label="Piper (local ONNX voice)",
+    voice_kind="path",
+    hosted=False,
+    note="Local Zolai voice path. --voice is a .onnx model path.",
+)

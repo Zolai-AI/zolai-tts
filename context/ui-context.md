@@ -2,31 +2,49 @@
 
 ## Theme
 
-Lightweight local research/demo UI. Minimal, no custom brand assets; default Gradio theme (source: `src/zolai_tts/ui/app.py`).
+Local research web studio (not a hosted product). shadcn/ui `radix-nova` preset with
+Tailwind CSS v4 and a light/dark semantic token set in `web/src/index.css` (source:
+`web/src/index.css`, `web/components.json`). No custom brand assets are committed.
 
 ## Colors
 
-Default Gradio/system palette. No custom brand colors committed (source: `src/zolai_tts/ui/app.py`).
+Semantic shadcn tokens only (`bg-background`, `text-muted-foreground`, `bg-primary`,
+`text-destructive`, etc.). The primary accent is an emerald tone shared with the Zolai
+studio; do not use raw color utilities in components (source: `web/src/index.css`).
 
 ## Typography
 
-System/default Gradio fonts. No custom font assets (source: `src/zolai_tts/ui/app.py`).
+Geist Variable via `@fontsource-variable/geist`, exposed as `--font-sans` and
+`--font-heading` through `@theme inline`. No external font CDN (source: `web/src/index.css`).
 
 ## Border Radius
 
-Default Gradio component radius (source: `src/zolai_tts/ui/app.py`).
+Token scale derived from `--radius` (`--radius-sm` … `--radius-4xl`). Use shadcn
+component defaults rather than hardcoded radii (source: `web/src/index.css`).
 
 ## Component Library
 
-Gradio Blocks (optional `ui` extra, `gradio>=6.32,<7`) for a local-only synth/dry-run form (source: `pyproject.toml`, `src/zolai_tts/ui/app.py`). Includes optional OSS mic/upload `Audio` wiring for local media (not persisted/uploaded by default).
+React 19 + Vite + Tailwind v4 + shadcn/ui (Radix base, lucide icons). Reusable UI lives
+in `web/src/components/ui/`; TTS-specific media components live in
+`web/src/components/ai-elements/`. Install new components with
+`bunx --bun shadcn@latest add <name>` from `web/` (source: `web/package.json`,
+`web/components.json`). Follow shadcn rules: semantic tokens, `FieldGroup`/`Field` for
+forms, `SelectItem` inside `SelectGroup`, `gap-*` instead of `space-y-*`, `size-*` for
+square dimensions, and `data-icon` for icons in buttons.
 
 ## Layout Patterns
 
-Single-page form: text input, provider/language selectors, voice/model/base-url/response-format fields, output path, optional mic/upload audio input (OSS/local), dry-run checkbox, run button, JSON result, audio output. Localhost bind, `share=False` by default; no auth, no persistent queue (source: `src/zolai_tts/ui/app.py`).
+Single-page studio: header + status badges, a two-column synthesize/result grid, a
+provider catalog table, and a capture/history section with Runs/Recordings tabs.
+Provider, model, voice and format selectors are populated from `/api/providers` and
+`/api/providers/{name}/catalog` and refresh live. Dry-run is the default. Audio
+playback uses the shadcn media-chrome `AudioPlayer`. Localhost only by default; no
+auth, no key values rendered (source: `web/src/App.tsx`, `src/zolai_tts/server.py`).
 
 ## Icons
 
-No custom icon set; Gradio defaults only (source: `src/zolai_tts/ui/app.py`).
+`lucide-react` (shadcn `iconLibrary: lucide`). Use icon objects in components and
+`data-icon="inline-start" | "inline-end"` inside buttons (source: `web/components.json`).
 
 ## Skills (UI / UX)
 

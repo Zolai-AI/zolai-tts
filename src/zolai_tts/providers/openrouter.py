@@ -128,4 +128,13 @@ class OpenRouterProvider:
         )
 
 
-register_provider("openrouter", lambda **options: OpenRouterProvider(**options))
+register_provider(
+    "openrouter",
+    lambda **options: OpenRouterProvider(**options),
+    label="OpenRouter (OpenAI-compatible)",
+    voice_kind="name",
+    hosted=True,
+    note="OpenAI-compatible /audio/speech. Voices/formats depend on the selected model.",
+    key_envs=("ZOLAI_TTS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
+    default_base_url=OPENROUTER_DEFAULT_BASE_URL,
+)

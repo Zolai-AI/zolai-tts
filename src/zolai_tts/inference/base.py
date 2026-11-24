@@ -9,6 +9,7 @@ from typing import Any, Protocol, runtime_checkable
 
 ProviderFactory = Callable[..., "TTSProvider"]
 _REGISTRY: dict[str, ProviderFactory] = {}
+_META: dict[str, dict[str, Any]] = {}
 
 
 @dataclass(frozen=True)
@@ -43,9 +44,42 @@ class TTSProvider(Protocol):
     def synthesize(self, text: str, voice: str, out_path: Path) -> SynthesisResult: ...
 
 
-def register_provider(name: str, factory: ProviderFactory) -> None:
-    """Register ``factory`` under the canonical key ``name``."""
+def register_provider(
+    name: str,
+    factory: ProviderFactory,
+    *,
+    label: str | None = None,
+    voice_kind: str = "name",
+    hosted: bool = True,
+    **extra: Any,
+) -> None:
+    """Register ``factory`` under the canonical key ``name``.
+
+    ``label``/``voice_kind``/``hosted`` plus any ``extra`` keys are provider
+    metadata surfaced by :func:`list_providers` so UIs and CLIs build their
+    provider list dynamically from the registry, not from hardcoded copies.
+    """
     _REGISTRY[name] = factory
+    _META[name] = {
+        "name": name,
+        "label": label or name,
+        "voice_kind": voice_kind,  # "path" for local model files, "name" for voice ids
+        "hosted": hosted,
+        **extra,
+    }
+
+
+def list_providers() -> list[dict[str, Any]]:
+    """Return metadata for every registered provider, ordered by name."""
+    return [dict(_META.get(name, {"name": name, "label": name})) for name in sorted(_REGISTRY)]
+
+
+def provider_meta(name: str) -> dict[str, Any]:
+    """Return metadata for one registered provider."""
+    try:
+        return dict(_META[name])
+    except KeyError:
+        raise ValueError(f"Unknown provider {name!r}.") from None
 
 
 def get_provider(name: str, **options: Any) -> TTSProvider:

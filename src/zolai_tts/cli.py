@@ -68,7 +68,16 @@ def _doctor_report() -> dict[str, Any]:
         "gpu": {"torch_installed": False, "cuda_available": False, "device_count": 0},
     }
 
-    for mod in ("gradio", "google.genai", "piper", "openai", "litellm", "pydantic_ai", "torch"):
+    for mod in (
+        "fastapi",
+        "uvicorn",
+        "google.genai",
+        "piper",
+        "openai",
+        "litellm",
+        "pydantic_ai",
+        "torch",
+    ):
         try:
             __import__(mod)
             report["modules"][mod] = True
@@ -185,7 +194,7 @@ def cmd_synth(args: argparse.Namespace) -> int:
 
 
 def cmd_ui_cmd(args: argparse.Namespace) -> int:
-    return _run_module("zolai_tts.ui.app", list(args.args))
+    return _run_module("zolai_tts.server", list(args.args))
 
 
 def cmd_test(args: argparse.Namespace) -> int:
@@ -262,7 +271,6 @@ def cmd_gemini_smoke(args: argparse.Namespace) -> int:
         return 1
 
 
-
 def cmd_env(args: argparse.Namespace) -> int:
     action = args.env_action
     root = Path.cwd()
@@ -284,8 +292,7 @@ def cmd_env(args: argparse.Namespace) -> int:
                     present = bool(os.getenv(key))
                     _print(f"  - {key}: {'present' if present else 'missing'}")
         _print(
-            "No secret values are printed. Edit the target file locally "
-            "and keep it uncommitted."
+            "No secret values are printed. Edit the target file locally and keep it uncommitted."
         )
         return 0
 
@@ -309,6 +316,7 @@ def cmd_env(args: argparse.Namespace) -> int:
 
     _print(f"Unknown env action: {action}", err=True)
     return 2
+
 
 def cmd_openrouter_smoke(args: argparse.Namespace) -> int:
     key_name = next((n for n in OPENROUTER_KEY_NAMES if os.getenv(n)), None)
@@ -337,8 +345,7 @@ def cmd_openrouter_smoke(args: argparse.Namespace) -> int:
     _print(json.dumps({"mode": "dry-run", "request": req}, indent=2, sort_keys=True))
     if not args.live:
         _print(
-            "Dry smoke only. Re-run with --live to perform a real API request "
-            "(uses quota/credits)."
+            "Dry smoke only. Re-run with --live to perform a real API request (uses quota/credits)."
         )
         return 0
 
@@ -516,7 +523,7 @@ def build_parser() -> argparse.ArgumentParser:
     menu = sub.add_parser("menu", help="Interactive menu")
     menu.set_defaults(func=cmd_menu)
 
-    ui = sub.add_parser("ui", help="Manage local Gradio UI process")
+    ui = sub.add_parser("ui", help="Manage local web UI process (FastAPI + React)")
     ui_sub = ui.add_subparsers(dest="ui_action", required=True)
 
     def _ui_common(p: argparse.ArgumentParser) -> None:
@@ -576,13 +583,11 @@ def build_parser() -> argparse.ArgumentParser:
     synth.add_argument("args", nargs=argparse.REMAINDER)
     synth.set_defaults(func=cmd_synth)
 
-    ui_cmd = sub.add_parser("ui-app", help="Passthrough to zolai_tts.ui.app (foreground)")
+    ui_cmd = sub.add_parser("ui-app", help="Passthrough to zolai_tts.server (foreground)")
     ui_cmd.add_argument("args", nargs=argparse.REMAINDER)
     ui_cmd.set_defaults(func=cmd_ui_cmd)
 
-    smoke = sub.add_parser(
-        "gemini-smoke", help="Check Gemini key presence; optional live request"
-    )
+    smoke = sub.add_parser("gemini-smoke", help="Check Gemini key presence; optional live request")
     smoke.add_argument(
         "--live", action="store_true", help="Perform a real API request (uses quota)."
     )

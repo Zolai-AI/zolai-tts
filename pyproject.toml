@@ -66,9 +66,11 @@ ai-litellm = [
 ai-pydantic = [
   "pydantic-ai-slim>=0.0.1",
 ]
-# Optional local research UI; base imports must not import gradio.
+# Optional local web UI (FastAPI backend + built React frontend in web/dist).
 ui = [
-  "gradio>=6.32,<7",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.34",
+  "python-multipart>=0.0.20",
 ]
 dev = [
   "pytest>=8.2",
@@ -88,7 +90,7 @@ Issues = "https://github.com/Zolai-AI/zolai-tts/issues"
 zolai-tts = "zolai_tts.cli:main"
 zolai-tts-prepare = "zolai_tts.data.preprocess:main"
 zolai-tts-synth = "zolai_tts.inference.synthesize:main"
-zolai-tts-ui = "zolai_tts.ui.app:main"
+zolai-tts-ui = "zolai_tts.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/zolai_tts"]

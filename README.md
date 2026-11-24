@@ -53,9 +53,11 @@ zolai-tts/
 │   ├── frontend/               # normalize.py, g2p.py, phonemize.py
 │   ├── data/                   # preprocess.py, validate.py, formats.py
 │   ├── inference/              # base.py (protocol/registry), synthesize.py (CLI)
-│   ├── providers/              # piper.py (real voice), gemini.py (optional demo)
-│   ├── ui/                     # optional local Gradio UI (lazy import)
+│   ├── providers/              # piper.py (real voice), gemini.py/openrouter.py (optional)
+│   ├── catalog.py              # dynamic, env-aware provider/model/voice catalog
+│   ├── server.py               # optional FastAPI web API (lazy optional imports)
 │   └── evaluation/             # objective.py, report.py
+├── web/                        # React + Vite + Tailwind + shadcn/ui frontend
 ├── tests/                      # Offline pytest suite + opt-in live marker
 └── research/                   # Baselines and paper notes
 ```
@@ -110,22 +112,36 @@ uv run zolai-tts openrouter-smoke   # env key presence only; --live is opt-in (u
 - The CLI orchestrates existing modules; it does not duplicate synthesis logic.
 - UI lifecycle state/logs are stored outside git in `/tmp/opencode/zolai-tts-<uid>/` (fallback: XDG runtime/cache dir). State files contain PID/host/port/cmd metadata only — **no API keys or secrets**.
 - `doctor` and `gemini-smoke` report env key presence only; they never print or persist secret values. `gemini-smoke --live` is opt-in and uses quota.
-- `ui start` runs `python -m zolai_tts.ui.app` in background and validates PID/cmdline on status.
+- `ui start` runs `python -m zolai_tts.server` in background and validates PID/cmdline on status.
 
-## Optional Local UI (Gradio)
+## Optional Local Web UI (FastAPI + React)
 
 ```bash
+# Backend (Python API + static frontend build)
 uv sync --extra dev --extra ui
+bun install --cwd web                    # JS deps (bun is the project package manager)
+bun run --cwd web build                  # outputs web/dist (served by FastAPI)
 uv run --extra ui zolai-tts-ui --help
-uv run --extra ui zolai-tts-ui  # foreground, local only, share=False by default
+uv run --extra ui zolai-tts-ui           # foreground, localhost:7860 by default
+
+# Frontend dev server (optional; proxies /api to the FastAPI server)
+bun run --cwd web dev                    # http://127.0.0.1:5174
 ```
 
-- The UI is a lightweight local research/demo surface; it is not a hosted production service.
-- Gradio is an optional dependency (`ui` extra) and is imported lazily — base installs/imports do not require it.
-- Use **Dry run** to validate provider/language/voice/model/base-url/request planning with no key/model/network.
-- Mic/Upload wiring uses OSS Gradio `Audio(sources=["microphone","upload"])` for local media; it is not persisted or uploaded by default.
-- Piper real synthesis requires a local ONNX voice; `piper-tts` is unavailable on Python >=3.13, so use dry-run or an external Python <3.13 Piper environment for real Piper audio.
-- Gemini/OpenRouter are optional/experimental for Tedim/Zolai/Zomi, warn on use, and read keys only from env at synthesis time. Never commit keys.
+- The UI is a local research surface, not a hosted production service. `--share`
+  binds `0.0.0.0` explicitly; the default is localhost only.
+- FastAPI and uvicorn are optional (`ui` extra) and imported lazily; base installs
+  and imports do not require them. Gradio is no longer used.
+- The React frontend uses Vite, Tailwind CSS v4 and shadcn/ui components. Provider,
+  model, voice and format selectors are populated from the live catalog endpoints.
+- Catalog fetches read keys from env at request time (header only); key **values**
+  are never returned, logged, or stored. The UI shows presence and env var name only.
+- **Dry run** builds a redacted request plan with no key/network. Real synthesis
+  requires a voice and, for hosted providers, an env API key.
+- Mic/upload files are saved under local storage with a metadata sidecar; this UI
+  never transmits them. Do not send community data without informed consent.
+- Piper needs a local ONNX voice; `piper-tts` is unavailable on Python >=3.13.
+  Gemini/OpenRouter remain experimental for Tedim/Zolai/Zomi.
 
 ## Optional Hosted Providers / AI SDK Layer
 

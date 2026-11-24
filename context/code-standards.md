@@ -15,7 +15,7 @@
 
 - `pyproject.toml` declares the package, dependency groups, console scripts, Hatchling backend and Ruff/pytest/mypy configuration; follow it rather than a separate config file.
 - Use `uv` for all environments. Run `uv run --extra dev python -m pytest` (not an external `pytest` binary), plus Ruff and mypy.
-- Base imports must not import optional backends, read API keys or make network calls. Optional packages (`piper`, `google-genai`, `openai`, `litellm`, `pydantic-ai-slim`, `gradio`) are imported lazily inside methods/functions.
+- Base imports must not import optional backends, read API keys or make network calls. Optional packages (`piper`, `google-genai`, `openai`, `litellm`, `pydantic-ai-slim`, `fastapi`, `uvicorn`) are imported lazily inside methods/functions.
 - Canonical provider keys are `piper`, `gemini`, and `openrouter`; do not add aliases such as `local`. The batch CLI's `--provider fish-audio` reuses the `openrouter` transport/config key (a model choice, not a new registry key) (source: `src/zolai_tts/batch.py`).
 - Config precedence is CLI > config YAML > environment > defaults. Use `ai_sdk.config.resolve_audio_config`; never persist or log secret values. Redacted config views may expose only key presence/env name.
 - Hosted providers (Gemini/OpenRouter/Fish Audio via OpenRouter/OpenAI-compatible) are experimental for Tedim/Zolai/Zomi and have no native support claims. No unlimited-free claims; document quota/free-tier/data-use limits and require informed consent before sending community data.
@@ -29,9 +29,9 @@
 
 ## Styling / UI
 
-- Optional local UI lives in `src/zolai_tts/ui/` and uses Gradio Blocks via the optional `ui` extra. Gradio must be imported lazily inside `build_app()`/`main()`; base imports must not import Gradio or optional synthesis backends (source: `src/zolai_tts/ui/app.py`, `pyproject.toml`).
+- Optional local web API lives in `src/zolai_tts/server.py` (FastAPI, optional `ui` extra); frontend lives in `web/` (React + Vite + Tailwind v4 + shadcn/ui). Server imports must stay lazy so base installs do not need FastAPI/uvicorn (source: `src/zolai_tts/server.py`, `pyproject.toml`, `web/package.json`).
 - UI is local research/demo only: bind localhost, default `share=False`, no auth/production claims, no persistent queue. Do not add cloud sharing by default (source: `src/zolai_tts/ui/app.py`).
-- UI tests must `pytest.importorskip("gradio")`, must not launch a server, and must not make network calls (source: `tests/test_ui.py`).
+- API tests use FastAPI `TestClient`, monkeypatch catalog/provider fetchers, and must not make network calls or persist secrets (source: `tests/test_ui.py`).
 
 ## CLI / Runtime
 

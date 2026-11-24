@@ -142,8 +142,8 @@ def _is_ui_process(state: UIState) -> bool:
     if not cmd:
         # If cmdline unavailable, be conservative: pid alive is weak evidence.
         # Keep only when command in state looks like ui and pid exists.
-        return any("zolai_tts.ui.app" in part for part in state.cmd)
-    return "zolai_tts.ui.app" in cmd
+        return any("zolai_tts.server" in part for part in state.cmd)
+    return "zolai_tts.server" in cmd
 
 
 def ui_status() -> dict[str, Any]:
@@ -183,7 +183,7 @@ def start_ui(
     if current.get("running"):
         return {"ok": False, "error": "already-running", "status": current}
 
-    cmd = [sys.executable, "-m", "zolai_tts.ui.app", "--host", host, "--port", str(port)]
+    cmd = [sys.executable, "-m", "zolai_tts.server", "--host", host, "--port", str(port)]
     if share:
         cmd.append("--share")
     if config:

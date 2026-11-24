@@ -30,7 +30,8 @@ Text (Tedim/Zolai/Zomi)
 | Piper adapter | `src/zolai_tts/providers/piper.py` | Real Zolai voice through a supplied ONNX model | lazy `piper-tts` |
 | Gemini adapter | `src/zolai_tts/providers/gemini.py` | Optional Zolai/Zomi demo, v1beta Interactions, consent warning | lazy `google-genai>=2.25.0` |
 | OpenRouter adapter | `src/zolai_tts/providers/openrouter.py` | Optional hosted/OpenAI-compatible TTS via `/audio/speech`; env-only key at call time | lazy `openai` |
-| Optional local UI | `src/zolai_tts/ui/app.py` | Local Gradio demo over synth/provider contracts; dry-run, model/base-url/format, mic/upload local wiring | lazy `gradio` (optional `ui` extra) |
+| Dynamic catalog | `src/zolai_tts/catalog.py` | Live provider/model/voice/format discovery, env keys header-only, curated fallback | stdlib urllib |
+| Optional local web studio | `src/zolai_tts/server.py`, `web/` | FastAPI API + React/Vite/shadcn UI; dry-run, live selectors, local runs/recordings | lazy `fastapi`/`uvicorn` (`ui` extra), bun |
 | Management CLI / runtime | `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py` | Menu/commands for UI lifecycle, doctor/check, gemini/openrouter smoke, passthroughs; PID/log state outside git | stdlib + `rich` |
 | Evaluation | `src/zolai_tts/evaluation/` | Duration helper and dependency-free Markdown report | `soundfile`, stdlib |
 
@@ -43,7 +44,7 @@ Text (Tedim/Zolai/Zomi)
 - Runtime UI state/logs live outside git (preferred `/tmp/opencode/zolai-tts-<uid>/`, fallback XDG runtime/cache) and must never contain secrets/API keys.
 - `piper` is the real Zolai voice; Gemini/OpenRouter are optional, experimental, and never a substitute for native Tedim/Zolai support.
 - Hosted providers have quotas/free-tier/data-use limits; no unlimited-free claims. Do not send community data without informed consent.
-- The Gradio UI is a local research/demo interface only (`share=False` default, localhost bind); mic/upload is local OSS wiring and not persisted/uploaded by default.
+- The web studio is a local-only research interface (localhost bind by default); the frontend never sees API key values and all audio/recordings stay in local storage.
 
 ## External Integrations
 
