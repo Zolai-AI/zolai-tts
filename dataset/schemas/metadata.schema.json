@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zolai-tts:metadata:1.0.0",
+  "title": "Zolai TTS dataset manifest (v1.0.0)",
+  "type": "object",
+  "required": ["schema_version", "language", "utterances"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0.0"},
+    "language": {"type": "string", "enum": ["ted", "zolai", "zomi"]},
+    "utterances": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "urn:zolai-tts:utterance:1.0.0"}
+    }
+  },
+  "additionalProperties": false
+}

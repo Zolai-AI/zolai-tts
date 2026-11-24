@@ -1,0 +1,7 @@
+# Example configuration only. No API key, voice model or audio is committed.
+# Provider keys are canonical: piper (real Zolai voice) | gemini (optional).
+provider: piper
+voice: /replace/with/real/zolai-voice.onnx
+language: zolai
+text: "Pasian in leitung a piangsak hi."
+out: /tmp/opencode/zolai-tts/out/synth.wav

@@ -4,45 +4,51 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- PLANNED / EXPERIMENTAL — repository scaffold and research direction; not a production TTS system (source: README.md).
+- IMPLEMENTED SCAFFOLD / EXPERIMENTAL — offline pipeline and CLI contracts are implemented; no trained community voice is shipped (source: README.md, `src/zolai_tts/`).
 
 ## Current Goal
 
-- Define a reproducible, framework-first Tedim/Zolai TTS research pipeline and dataset guidance (source: README.md, docs/architecture.md).
+- Provide a reproducible, framework-first Tedim/Zolai TTS tooling slice with versioned schemas, offline tests and an optional Zolai/Zomi Gemini demo path (source: README.md, `docs/architecture.md`).
 
 ## Completed
 
-- 2026-11-24 — Replaced the six context scaffolds with committed HEAD evidence: live status, stack, boundaries, tokens and conventions are now sourced from tracked files. Files: `context/project-overview.md`, `context/architecture.md`, `context/ui-context.md`, `context/code-standards.md`, `context/ai-workflow-rules.md`, `context/progress-tracker.md`. Impact: documentation only; no application code changed.
-- `docs/architecture.md` is committed with status PROPOSED, including the pipeline and component boundaries (source: docs/architecture.md).
-- `docs/roadmap.md`, `docs/dataset-guidelines.md`, `docs/pronunciation.md` and `docs/framework-selection.md` are committed research docs (source: git ls-tree -r HEAD -- docs).
-- Alignment pass changed no dependencies and ran no training (source: AGENTS.md).
+- 2026-11-24 — Implemented the full scaffold: `src/zolai_tts/` frontend (normalize, ZVS-attested G2P, phonemizer fallback), data validation/format writers, provider protocol and registry, Piper adapter, optional Gemini adapter, synthesis/prepare CLIs, evaluation helpers, configs, versioned JSON Schemas, placeholder fixture and six offline test modules. Corrected the G2P digraph inventory from a draft list to the ZVS-attested `th, kh, gh, ng, ch, ph, bh` (`zolai-core/docs/ZOLAI_SYLLABLE_DESIGN.md:45-55,104`).
+- 2026-11-24 — Gemini adapter uses `ted`/`zolai`/`zomi`/`en` codes; Mizo is not used. Zolai-family requests emit an explicit no-native-support and free-tier/consent warning.
+- 2026-11-24 — Fixed manifest resolution: removed the unsatisfiable Coqui extra (`pandas<2.0` vs base `>=2.2`); documented Coqui as a separate research environment.
+- 2026-11-24 — Updated README, `docs/architecture.md`, `docs/framework-selection.md`, `docs/dataset-guidelines.md`, `docs/pronunciation.md`, `context/architecture.md`, `context/code-standards.md`, `context/project-overview.md`, this tracker, CHANGELOG, and absorbed `.ignore`.
+- Prior — replaced six context scaffolds with committed HEAD evidence; aligned with canonical workspace SDLC and source-of-truth (source: git history).
 
 ## In Progress
 
-- Framework choices remain PROPOSED pending validation against dataset size and deployment targets (source: README.md).
+- Framework choice remains PROPOSED pending validation against dataset size and deployment targets (source: `docs/framework-selection.md`).
 
 ## Next Up
 
-- No next implementation unit is documented in HEAD; UNKNOWN — source: docs/roadmap.md.
+- Acquire a consented pilot dataset and validate it against `dataset/schemas/utterance.schema.json`.
+- Fine-tune a real Piper Zolai voice from an external ONNX artifact; no model is committed.
+- Decide code/dataset/model licenses; the README badge and manifest both say TBD.
 
 ## Open Questions
 
-- Code, dataset and model licensing are TBD (source: README.md, pyproject.toml).
-- No executable pipeline exists in HEAD: `src/` is empty (source: git ls-tree -r HEAD -- src).
+- Code, dataset and model licensing remain TBD (source: README.md, `pyproject.toml`).
+- Which community speaker(s) and consent records can support a pilot recording set.
+- Whether hosted-provider demos are acceptable under the free-tier data terms.
 
 ## Architecture Decisions
 
-- Framework-first: implement Tedim rules in-repo and delegate synthesis to established frameworks (source: docs/architecture.md).
-- Keep large audio and checkpoints outside git; version dataset schemas (source: docs/architecture.md, AGENTS.md).
-- Python remains authoritative for language tooling; no NestJS or Rust service layer added (source: AGENTS.md).
+- Framework-first: Tedim rules in `frontend/`, synthesis in `providers/` (source: `docs/architecture.md`).
+- No cross-repo code copy: `zolai-core` ZVS rules are cited, not imported (source: `docs/pronunciation.md`).
+- Base install is offline, extra-free and keyless; optional backends are lazy (source: `src/zolai_tts`, `tests/test_gemini.py`).
+- Large audio and checkpoints stay outside git; schemas are versioned (source: `docs/architecture.md`, AGENTS.md).
 
-## System Design Checklist
+## Verification Evidence
 
-Refer to `architecture.md` > System Design & Infrastructure when adopting new
-infrastructure concepts. Each row documents a decision point with service choice
-and trade-offs.
+- `uv run --extra dev python -m pytest`: 38 passed, 1 skipped (offline; live Gemini skipped).
+- `uv run --extra dev python -m ruff check src tests`: all checks passed.
+- `uv run --extra dev python -m mypy src`: no issues in 18 source files.
+- `pytest --markers` registers `live`; `pytest -m live -rs` reports one skip with no key.
 
 ## Session Notes
 
-- Local `docs/roadmap.md` is deprecated in favour of the canonical workspace roadmap (source: AGENTS.md).
-- All source paths in `architecture.md` are marked PROPOSED because `src/` is empty in HEAD.
+- Local `docs/roadmap.md` remains deprecated in favour of the workspace-root canonical roadmap (source: AGENTS.md).
+- This implementation was performed directly in-session because the orchestra subagent quota was exhausted; the design gate correction was applied from the Tech Lead's verified finding.

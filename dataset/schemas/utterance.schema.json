@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zolai-tts:utterance:1.0.0",
+  "title": "Zolai TTS utterance (v1.0.0)",
+  "type": "object",
+  "required": [
+    "id",
+    "speaker_id",
+    "audio_path",
+    "text",
+    "text_normalized",
+    "language",
+    "sample_rate",
+    "duration_sec",
+    "source",
+    "license",
+    "consent"
+  ],
+  "properties": {
+    "id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"},
+    "speaker_id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"},
+    "audio_path": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\].*\\.wav$"},
+    "text": {"type": "string", "minLength": 1},
+    "text_normalized": {"type": "string", "minLength": 1},
+    "language": {"type": "string", "enum": ["ted", "zolai", "zomi"]},
+    "sample_rate": {"type": "integer", "enum": [22050, 44100]},
+    "duration_sec": {"type": "number", "exclusiveMinimum": 0},
+    "source": {"type": "string", "minLength": 1},
+    "license": {"type": "string", "minLength": 1},
+    "consent": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": true
+}

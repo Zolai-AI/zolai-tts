@@ -1,8 +1,10 @@
 # Zolai-TTS
+![License: TBD](https://img.shields.io/badge/License-TBD-lightgrey.svg)
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-blue.svg)
 
 Open-source research and development of Text-to-Speech (TTS) technology for **Tedim Zolai**, focusing on pronunciation, speech datasets, low-resource language synthesis, and accessible voice technology.
 
-> Status: **PLANNED / EXPERIMENTAL** — repository scaffold and research direction. Not a production TTS system yet.
+> Status: **IMPLEMENTED SCAFFOLD / EXPERIMENTAL** — offline tooling and CLI contracts are implemented; no trained community voice or production model is shipped yet.
 
 ## Goals
 
@@ -21,113 +23,84 @@ Open-source research and development of Text-to-Speech (TTS) technology for **Te
 
 ## Framework-First Approach
 
-This project intentionally builds on existing TTS frameworks and libraries. Tedim/Zolai is low-resource; the fastest path to usable results is to adapt proven systems.
-
 | Area | Primary library/framework | Role |
 |------|---------------------------|------|
-| TTS training | [Piper](https://github.com/rhasspy/piper) (VITS-based) | Lightweight, deployable ONNX voices; good low-resource fine-tuning path |
-| TTS experimentation | [Coqui TTS](https://github.com/idiap/coqui-ai-TTS) / VITS | Research experiments, model comparison |
-| Low-resource bootstrapping | [Meta MMS-TTS](https://huggingface.co/facebook/mms-tts) / Transformers | Multilingual baseline and fine-tuning experiments |
-| Audio processing | [librosa](https://librosa.org/), [soundfile](https://pysoundfile.readthedocs.io/), [pydub](https://github.com/jiaaro/pydub) | Resampling, trimming, feature extraction |
-| Text normalization | [num2words](https://github.com/savoirfairelinux/num2words) + custom Tedim rules | Numbers, abbreviations, punctuation, orthography normalization |
-| G2P / phonemization | [phonemizer](https://github.com/bootphon/phonemizer) + custom Tedim G2P rules | Grapheme-to-phoneme; eSpeak-ng backend where useful, Tedim-specific rules as ground truth |
-| Dataset format/validation | [datasets](https://huggingface.co/docs/datasets/), [pandas](https://pandas.pydata.org/), JSON Schema | Metadata validation, dataset packaging |
-| Evaluation | [UTMOS](https://github.com/sarulab-speech/UTMOS22) / MCD / subjective MOS | Objective and human evaluation |
-| Experiment tracking | [Weights & Biases](https://wandb.ai/) or local logs | Optional training/eval tracking |
+| TTS training | [Piper](https://github.com/rhasspy/piper) (VITS-based) | Lightweight, deployable ONNX voices; real Tedim/Zolai voice path |
+| TTS experimentation | Coqui TTS / VITS | Research experiments in a **separate environment** (pins `pandas<2.0`) |
+| Low-resource bootstrapping | [Meta MMS-TTS](https://huggingface.co/facebook/mms-tts) | Documented research path; no adapter in this slice |
+| Optional hosted demos | Gemini TTS (`gemini-3.8-flash-tts`) | Zolai/Zomi demo requests only; **experimental**, no native support |
+| Audio processing | librosa, soundfile, pydub | Resampling, trimming, feature extraction |
+| Text normalization | num2words + custom Tedim rules | Numbers, abbreviations, punctuation, orthography normalization |
+| G2P / phonemization | phonemizer + rule-based fallback | Provisional grapheme segmentation; ZVS 2018 digraph inventory |
+| Dataset format/validation | pandas, jsonschema | Metadata validation, dataset packaging |
+| Evaluation | UTMOS / MCD / MOS | Objective and human evaluation (report templates implemented) |
 
-> Framework choices are **PROPOSED** and should be validated against dataset size, licensing, and deployment targets before locking in.
+Framework choices remain **PROPOSED** until validated against dataset size, licensing and deployment targets.
 
 ## Project Structure
 
 ```text
 zolai-tts/
-├── README.md
-├── LICENSE                     # TBD after code/model/dataset license review
-├── CONTRIBUTING.md
-├── SECURITY.md
-├── .gitignore
-├── pyproject.toml              # Python package + dependency groups
+├── pyproject.toml              # Package, dependency groups, console scripts, tooling
 ├── configs/
-│   ├── piper/                  # Piper training/inference configs
-│   ├── coqui/                  # Coqui/VITS experiment configs
-│   └── mms/                    # MMS fine-tuning configs
-├── docs/
-│   ├── architecture.md         # Pipeline and component boundaries
-│   ├── roadmap.md              # Milestones and decision gates
-│   ├── dataset-guidelines.md   # Recording, consent, metadata, QA
-│   ├── pronunciation.md        # Tedim/Zolai orthography and phonology notes
-│   └── framework-selection.md  # Framework evaluation criteria
+│   ├── example.yaml            # Safe-loaded example config (no keys/models)
+│   └── README.md
 ├── dataset/
-│   ├── README.md
-│   ├── schemas/                # JSON Schema for metadata/utterances
-│   │   ├── metadata.schema.json
-│   │   └── utterance.schema.json
-│   ├── metadata/               # Small tracked metadata/examples only
-│   └── splits/                 # Train/dev/test manifests (no large audio)
-├── research/
-│   ├── README.md
-│   ├── baselines/              # Baseline experiment notes
-│   └── papers/                 # Paper summaries / references
-├── src/
-│   └── zolai_tts/
-│       ├── __init__.py
-│       ├── frontend/           # Text normalization + G2P adapters
-│       │   ├── __init__.py
-│       │   ├── normalize.py
-│       │   ├── g2p.py
-│       │   └── phonemize.py
-│       ├── data/               # Dataset prep, validation, format conversion
-│       │   ├── __init__.py
-│       │   ├── preprocess.py
-│       │   ├── validate.py
-│       │   └── formats.py
-│       ├── training/           # Framework adapters/config wrappers
-│       │   ├── __init__.py
-│       │   ├── piper_adapter.py
-│       │   └── mms_adapter.py
-│       ├── inference/          # Runtime synthesis adapters
-│       │   ├── __init__.py
-│       │   └── synthesize.py
-│       └── evaluation/         # Objective/subjective evaluation helpers
-│           ├── __init__.py
-│           ├── objective.py
-│           └── report.py
-├── scripts/
-│   ├── prepare_dataset.py
-│   ├── train_piper.sh
-│   └── synthesize.py
-├── tests/
-│   ├── test_normalize.py
-│   ├── test_g2p.py
-│   └── test_dataset_schema.py
-└── examples/
-    ├── README.md
-    └── sample_utterances.jsonl
+│   ├── schemas/                # Versioned JSON Schemas (utterance, metadata)
+│   └── metadata/sample.jsonl   # 3 placeholder records; no audio committed
+├── docs/                       # Architecture, framework choice, dataset, pronunciation
+├── src/zolai_tts/
+│   ├── frontend/               # normalize.py, g2p.py, phonemize.py
+│   ├── data/                   # preprocess.py, validate.py, formats.py
+│   ├── inference/              # base.py (protocol/registry), synthesize.py (CLI)
+│   ├── providers/              # piper.py (real voice), gemini.py (optional demo)
+│   └── evaluation/             # objective.py, report.py
+├── tests/                      # Offline pytest suite + opt-in live marker
+└── research/                   # Baselines and paper notes
 ```
 
-## Design Notes
-
-- **`src/zolai_tts/frontend/`** keeps Tedim-specific language rules (normalization, G2P) close to the codebase, while calling external libraries where appropriate.
-- **`src/zolai_tts/training/`** contains adapters/configuration around frameworks, not a from-scratch TTS model implementation.
-- **`configs/`** separates experiment/training configuration from Python code.
-- **`dataset/`** tracks schemas and small metadata only. Large audio/corpora belong in shared data storage or external dataset releases, not git.
-- **`research/`** captures experiments, baselines, and paper notes before they become stable pipeline code.
-
-## Quick Start (Scaffold)
+## Quick Start
 
 ```bash
-# Python 3.11+ recommended
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --extra dev
+uv run --extra dev python -m pytest            # offline; live Gemini test skipped
+uv run --extra dev python -m ruff check src tests
+uv run --extra dev python -m mypy src
 
-# Validate dataset metadata (example)
-python scripts/prepare_dataset.py --help
+uv run zolai-tts-prepare --help
+uv run zolai-tts-synth --help
+
+mkdir -p /tmp/opencode/zolai-tts/out
+uv run zolai-tts-prepare \
+  --input dataset/metadata/sample.jsonl \
+  --schema dataset/schemas/utterance.schema.json \
+  --out-dir /tmp/opencode/zolai-tts/out --format piper
+uv run zolai-tts-synth --text "Pasian in leitung a piangsak hi." \
+  --provider piper --voice /replace/with/real/zolai-voice.onnx \
+  --language zolai --out /tmp/opencode/zolai-tts/out/synth.wav --dry-run
 ```
+
+`--dry-run` writes no audio and needs no key or backend. Real synthesis requires a
+real ONNX voice supplied via `--voice`; none is committed.
+
+## Optional Gemini Provider
+
+```bash
+# Set ZOLAI_TTS_GEMINI_API_KEY in your shell; never commit its value.
+uv run --extra gemini zolai-tts-synth --text "Pasian" \
+  --provider gemini --voice Kore --language zolai \
+  --out /tmp/opencode/zolai-tts/out/gemini.wav
+```
+
+- Accepted `--language` values: `ted`, `zolai`, `zomi`, `en`. **Mizo is not used.**
+- Gemini has **no native Tedim/Zolai/Zomi TTS support**; these requests are experimental, are not ZVS 2018 ground truth, and emit a warning. Do not ship them as the community voice — use Piper.
+- Free-tier content **may be used to improve Google products**. Do not send community text or voice data without informed consent and a license decision.
+- Requires `google-genai>=2.25.0` and the `v1beta` Interactions API. Keys are read only at synthesis time; imports make no network calls.
+- The live smoke test is opt-in: `ZOLAI_TTS_RUN_LIVE=1` plus a key. By default it reports `SKIPPED`.
 
 ## Data and Licensing
 
-- **Code license:** TBD — decide after reviewing dependencies (Piper/MIT, Coqui/MPL-2.0, Transformers/Apache-2.0, etc.) and intended distribution.
+- **Code license:** TBD — decide after reviewing dependency licenses and intended distribution.
 - **Dataset license:** TBD per dataset/source. Do not commit audio or text without clear permission and provenance.
 - **Model license:** TBD per trained checkpoint; document upstream base model/data licenses.
 

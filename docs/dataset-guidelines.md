@@ -30,19 +30,23 @@
 
 ## Metadata Schema
 
-See `dataset/schemas/utterance.schema.json`. Minimum fields:
+- Per-utterance records: [`dataset/schemas/utterance.schema.json`](../dataset/schemas/utterance.schema.json) (Draft 2020-12, `urn:zolai-tts:utterance:1.0.0`).
+- Dataset manifest wrapper: [`dataset/schemas/metadata.schema.json`](../dataset/schemas/metadata.schema.json) (`urn:zolai-tts:metadata:1.0.0`).
+- Placeholder example: [`dataset/metadata/sample.jsonl`](../dataset/metadata/sample.jsonl) — three records, no audio committed.
+
+Required utterance fields:
 
 - `id` - stable utterance ID
 - `speaker_id` - pseudonymous speaker identifier
-- `audio_path` - relative path in dataset package
+- `audio_path` - relative path ending in `.wav`
 - `text` - raw transcript
 - `text_normalized` - normalized training text
-- `language` - `ted`/`zolai` (confirm project code)
-- `sample_rate` - integer Hz
-- `duration_sec` - float seconds
+- `language` - `ted`, `zolai` or `zomi`
+- `sample_rate` - 22050 or 44100 Hz
+- `duration_sec` - float seconds > 0
 - `source` - recording source/provenance
-- `license` - dataset/license identifier
-- `consent` - consent status/reference
+- `license` - dataset/license identifier (may be `"TBD"` until decided)
+- `consent` - string reference to the consent record
 
 ## Splits
 
@@ -55,3 +59,4 @@ See `dataset/schemas/utterance.schema.json`. Minimum fields:
 - Raw/private recordings without release clearance.
 - Personally identifying speaker information.
 - Large audio blobs in git; use shared storage/HF/Kaggle/DVC/LFS as decided.
+- API keys or hosted-provider credentials.

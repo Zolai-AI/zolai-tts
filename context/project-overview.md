@@ -4,9 +4,9 @@
 
 Open-source research and development of Text-to-Speech technology for Tedim Zolai,
 focusing on pronunciation, speech dataset guidelines, low-resource language synthesis
-and accessible voice technology. **Status: PLANNED / EXPERIMENTAL** — repository scaffold
-and research direction, not a production TTS system. Source: README.md, pyproject.toml,
-project.yaml.
+and accessible voice technology. **Status: IMPLEMENTED SCAFFOLD / EXPERIMENTAL** —
+offline tooling and CLI contracts exist; no production voice is shipped. Source:
+README.md, `src/zolai_tts/`.
 
 ## Goals
 
@@ -17,43 +17,37 @@ project.yaml.
 
 ## Core User Flow
 
-The research pipeline is documented, not yet implemented in HEAD:
-
-1. Text input is normalized with Tedim-specific rules and number handling (source: docs/architecture.md).
-2. Grapheme-to-phoneme conversion applies Tedim rules with a phonemizer fallback (source: docs/architecture.md).
-3. A framework adapter drives Piper, Coqui or MMS training into a model checkpoint (source: docs/architecture.md).
-4. An inference adapter synthesizes WAV/OGG audio and an evaluation report (source: docs/architecture.md).
+1. Text is normalized with ZVS 2018-safe Tedim rules (source: `src/zolai_tts/frontend/normalize.py`).
+2. Grapheme segmentation uses the attested digraph inventory with a phonemizer fallback (source: `src/zolai_tts/frontend/g2p.py`, `phonemize.py`).
+3. `zolai-tts-prepare` validates JSONL metadata and writes a text manifest (source: `src/zolai_tts/data/`).
+4. `zolai-tts-synth` selects `piper` (real voice) or optional `gemini` (experimental Zolai/Zomi demo) and writes audio plus a result (source: `src/zolai_tts/inference/`, `providers/`).
+5. Evaluation helpers report duration and render a Markdown report (source: `src/zolai_tts/evaluation/`).
 
 ## Features
 
-### Research design
-
-- Framework-first pipeline with in-repo Tedim language logic and delegated synthesis (source: docs/architecture.md).
-- Component boundaries for frontend, data, training, inference and evaluation (source: docs/architecture.md).
-- Recorded guidance on recording, consent, metadata and dataset QA (source: README.md, docs/dataset-guidelines.md).
-
-### Artifacts and evaluation
-
-- Versioned JSON Schemas for metadata and utterances in the proposed `dataset/` layout (source: docs/architecture.md, README.md).
-- Objective and human-evaluation templates with UTMOS, MCD and MOS (source: docs/architecture.md).
-- Framework evaluation criteria in `docs/framework-selection.md` (source: README.md).
+- Implemented frontend, dataset, provider, inference and evaluation modules (source: `src/zolai_tts/`).
+- Versioned JSON Schemas and a placeholder JSONL fixture with no audio (source: `dataset/`).
+- Offline pytest suite with an opt-in `live` marker for network tests (source: `tests/`, `pyproject.toml`).
+- Documented guidance on recording, consent, metadata and dataset QA (source: `docs/dataset-guidelines.md`).
+- ZVS 2018 digraph reference cited from `zolai-core`, not copied (source: `docs/pronunciation.md`).
 
 ## Scope
 
 ### In Scope
 
-- Research documentation, dataset guidelines, pronunciation notes and proposed component boundaries (source: README.md, docs/architecture.md).
-- Small tracked metadata and schemas; large artifacts stay outside git (source: docs/architecture.md, AGENTS.md).
+- Offline research tooling, schemas, small metadata, docs and tests (source: README.md, docs/architecture.md).
+- Optional hosted provider for Zolai/Zomi demos with explicit warning (source: README.md, `src/zolai_tts/providers/gemini.py`).
 
 ### Out of Scope
 
-- A production TTS system; the README states the repo is PLANNED / EXPERIMENTAL (source: README.md).
-- From-scratch model implementation; only adapters and configuration around frameworks are planned (source: docs/architecture.md).
-- Committing audio, corpora, checkpoints, API keys, tokens or unpublished speaker data (source: docs/architecture.md, README.md, AGENTS.md).
-- License decisions; code, dataset and model licensing are recorded as TBD in HEAD (source: README.md, pyproject.toml).
+- Production TTS system and trained community voice (source: README.md).
+- From-scratch model implementation and training runs (source: docs/architecture.md).
+- Committing audio, corpora, checkpoints, API keys or unpublished speaker data (source: docs/architecture.md, AGENTS.md).
+- License decisions; code, dataset and model licensing remain TBD (source: README.md, pyproject.toml).
 
 ## Success Criteria
 
-1. Executable pipeline success criteria are UNKNOWN — source: git ls-tree -r HEAD (the `src/` tree is empty).
-2. Any added dataset metadata validates against the versioned schemas described in `docs/architecture.md`.
-3. Large audio and checkpoint artifacts remain outside git (source: docs/architecture.md, AGENTS.md).
+1. `import zolai_tts` and both console scripts work without optional extras, network or key.
+2. Offline tests pass; the live Gemini test reports skipped by default.
+3. Added dataset metadata validates against `dataset/schemas/utterance.schema.json`.
+4. Large audio and checkpoint artifacts remain outside git.

@@ -2,8 +2,7 @@
 
 ## Stack
 
-Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md`;
-no runtime or dependency versions are asserted here.
+Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md`.
 
 | Layer | Technology | Role | Source |
 |-------|-----------|------|--------|
@@ -11,65 +10,59 @@ no runtime or dependency versions are asserted here.
 | Packaging | Hatchling | Build backend | pyproject.toml |
 | Package manager | uv | Declared package manager | project.yaml |
 | Audio | librosa, soundfile, pydub | Resampling, trimming, feature extraction | pyproject.toml, README.md |
-| Text | num2words, phonemizer | Number handling and phonemization | pyproject.toml, README.md |
-| Data | pandas, jsonschema, pyyaml | Metadata validation and packaging | pyproject.toml, docs/architecture.md |
-| CLI | tqdm, rich | Progress and terminal output | pyproject.toml |
-| Training backends | Piper, Coqui TTS, Transformers/MMS | PROPOSED framework adapters | README.md, docs/architecture.md |
-| Evaluation | UTMOS, MCD, MOS | PROPOSED objective and human evaluation | README.md, docs/architecture.md |
+| Text | phonemizer (fallback), custom rules | G2P fallback and ZVS 2018-safe normalization | pyproject.toml, docs/pronunciation.md |
+| Data | jsonschema, pyyaml, pandas | Metadata validation and config loading | pyproject.toml, docs/architecture.md |
+| CLI | argparse, tqdm, rich | Console scripts and terminal output | pyproject.toml, src/zolai_tts |
+| Synthesis backends | Piper (local), optional Gemini (hosted) | Real voice path and experimental demos | pyproject.toml, README.md |
 | Testing | pytest, ruff, mypy | Dev tooling declared in the manifest | pyproject.toml |
+
+`google-genai>=2.25.0` is an optional extra; `piper-tts` is guarded to Python <3.13. Coqui TTS is deliberately not an extra because it hard-pins `pandas<2.0`.
 
 ## System Boundaries
 
-The `src/` tree is empty in HEAD (source: `git ls-tree -r --name-only HEAD -- src`), so
-all source paths below are PROPOSED from `README.md` and `docs/architecture.md`.
-
-- `docs/architecture.md` — committed PROPOSED pipeline and component boundaries (source: git ls-tree -r HEAD -- docs, docs/architecture.md).
-- `docs/dataset-guidelines.md`, `docs/pronunciation.md`, `docs/framework-selection.md`, `docs/roadmap.md` — committed research documentation (source: git ls-tree -r HEAD -- docs).
-- `src/zolai_tts/frontend/` — PROPOSED normalization and G2P with Tedim-specific rules (source: docs/architecture.md).
-- `src/zolai_tts/data/` — PROPOSED dataset validation and format conversion (source: docs/architecture.md).
-- `src/zolai_tts/training/`, `src/zolai_tts/inference/`, `src/zolai_tts/evaluation/` — PROPOSED framework adapters and evaluation helpers (source: docs/architecture.md).
-- `configs/`, `dataset/schemas/`, `research/`, `scripts/`, `tests/` — PROPOSED layout documented in README.md, not present in HEAD (source: README.md, git ls-tree -r HEAD).
+- `src/zolai_tts/frontend/` — implemented ZVS 2018-safe normalization, provisional G2P and phonemizer fallback (source: `docs/architecture.md`, `tests/test_normalize.py`, `tests/test_g2p.py`).
+- `src/zolai_tts/data/` — implemented JSON Schema validation and LJSpeech/Piper text manifest writers (source: `dataset/schemas/`, `src/zolai_tts/data/`).
+- `src/zolai_tts/inference/` — implemented `TTSProvider` protocol, frozen `SynthesisResult`, canonical registry and synthesis CLI (source: `src/zolai_tts/inference/`).
+- `src/zolai_tts/providers/` — implemented Piper adapter (real voice) and optional Gemini adapter (source: `src/zolai_tts/providers/`).
+- `src/zolai_tts/evaluation/` — implemented duration helper and Markdown report renderer (source: `src/zolai_tts/evaluation/`).
+- `configs/`, `dataset/schemas/`, `dataset/metadata/` — committed example config, versioned schemas and placeholder metadata (source: `configs/`, `dataset/`).
+- `tests/` — offline pytest suite plus opt-in `live` marker (source: `pyproject.toml`, `tests/`).
 
 ## Storage Model
 
-- **Versioned schemas and small metadata**: PROPOSED in `dataset/schemas/` and `dataset/metadata/` (source: docs/architecture.md, README.md).
-- **Large artifacts**: audio, corpora and checkpoints stay outside git in shared storage, Hugging Face or Kaggle (source: docs/architecture.md, AGENTS.md).
-- **Application database**: N/A — source: pyproject.toml, git ls-tree -r HEAD.
+- Versioned schemas and small metadata live in `dataset/schemas/` and `dataset/metadata/` (source: `docs/architecture.md`).
+- Large audio, corpora and checkpoints stay outside git in shared storage, Hugging Face or Kaggle (source: `docs/architecture.md`, AGENTS.md).
+- Application database: N/A (source: `pyproject.toml`).
 
 ## Auth and Access Model
 
-- No application authentication, ownership or access-control model exists in HEAD (source: git ls-tree -r HEAD, docs/architecture.md).
-- Do not commit API keys, tokens, private speaker data or unpublished recordings (source: README.md, AGENTS.md).
+- No application authentication or access-control model exists (source: `pyproject.toml`, `docs/architecture.md`).
+- API keys are read only inside the optional Gemini adapter at synthesis time, from `ZOLAI_TTS_GEMINI_API_KEY` or `GEMINI_API_KEY` (source: `src/zolai_tts/providers/gemini.py`).
+- Never commit API keys, tokens, private speaker data or unpublished recordings (source: README.md, AGENTS.md).
 
 ## System Design & Infrastructure
 
 | Concept | Service / Tech | Notes | Source |
 |---------|---------------|-------|--------|
-| **Compute** | N/A — source: pyproject.toml | No service runtime in HEAD | pyproject.toml |
-| **Database** | N/A — source: pyproject.toml | No database dependency | pyproject.toml |
-| **Object Storage** | Shared storage / Hugging Face / Kaggle | PROPOSED home for large artifacts | docs/architecture.md |
-| **CDN** | N/A — source: docs/architecture.md | No CDN decision documented | docs/architecture.md |
-| **Caching** | N/A — source: docs/architecture.md | No cache layer documented | docs/architecture.md |
-| **Queue / Async** | N/A — source: pyproject.toml | No queue dependency | pyproject.toml |
-| **Rate Limiting** | N/A — source: docs/architecture.md | No service endpoint in HEAD | docs/architecture.md |
-| **Load Balancing** | N/A — source: docs/architecture.md | No service endpoint in HEAD | docs/architecture.md |
-| **Microservices** | zolai-core integration | PROPOSED source of shared linguistic resources | docs/architecture.md |
-| **Observability** | Local logs or optional experiment tracking | PROPOSED in README.md | README.md |
-| **Search** | N/A — source: docs/architecture.md | No search component documented | docs/architecture.md |
-| **Streaming / Realtime** | N/A — source: docs/architecture.md | Batch pipeline design only | docs/architecture.md |
+| Compute | N/A | Offline CLI tooling; no service runtime | pyproject.toml |
+| Database | N/A | No database dependency | pyproject.toml |
+| Object Storage | Shared storage / Hugging Face / Kaggle | Home for large artifacts | docs/architecture.md |
+| CDN / Cache / Queue | N/A | No service endpoint | docs/architecture.md |
+| Microservices | zolai-core integration | ZVS rules referenced, not imported | docs/architecture.md |
+| Observability | Local logs / optional experiment tracking | No hosted service in this slice | README.md |
+| Streaming / Realtime | N/A | Batch CLI design only | docs/architecture.md |
 
 ## Scaling & Performance Constraints
 
-- Traffic volume: UNKNOWN — source: docs/architecture.md.
-- Latency target: UNKNOWN — source: docs/architecture.md.
-- Data growth estimate: UNKNOWN — source: docs/architecture.md.
-- Availability target: UNKNOWN — source: docs/architecture.md.
-- Budget constraint: UNKNOWN — source: docs/architecture.md.
+- Traffic volume, latency target, data growth, availability and budget: UNKNOWN (source: `docs/architecture.md`).
 
 ## Invariants
 
-1. Framework-first: Tedim-specific language logic in `frontend/`, synthesis delegated to established frameworks (source: docs/architecture.md).
-2. Framework-specific code stays in adapters and `configs/`; no from-scratch model implementation (source: docs/architecture.md).
-3. Large audio and checkpoints stay outside git (source: docs/architecture.md, AGENTS.md).
-4. Dataset schemas are versioned in `dataset/schemas/` (source: docs/architecture.md).
-5. Language ground truth is ZVS 2018 orthography; RAG/embeddings-first is the org strategy, not raw fine-tuning (source: workspace AGENTS.md as recorded in repo AGENTS.md alignment).
+1. Framework-first: Tedim language logic in `frontend/`, synthesis delegated to adapters (source: `docs/architecture.md`).
+2. Framework-specific code stays in `providers/` and `configs/`; no from-scratch model implementation (source: `docs/architecture.md`).
+3. Large audio and checkpoints stay outside git (source: `docs/architecture.md`, AGENTS.md).
+4. Dataset schemas are versioned in `dataset/schemas/` (source: `docs/architecture.md`).
+5. ZVS 2018 is ground truth by reference to `zolai-core`; no cross-repo copy or invented phonology/numerals (source: `docs/pronunciation.md`).
+6. Base imports make no network call, read no key and import no optional backend (source: `src/zolai_tts`, `tests/test_gemini.py`).
+7. Canonical provider keys are exactly `piper` and `gemini`; there is no `local` alias (source: `src/zolai_tts/inference/base.py`).
+8. Piper is the real Zolai voice; Gemini uses `ted`/`zolai`/`zomi` only as experimental demos with a free-tier/consent warning (source: `src/zolai_tts/providers/gemini.py`, README.md).

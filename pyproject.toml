@@ -35,14 +35,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Install one training backend at a time; they have heavy/conflicting deps.
+# Install one synthesis backend at a time; they have heavy/conflicting deps.
 piper = [
   "piper-tts>=1.2; python_version < '3.13'",
   "onnxruntime>=1.18",
 ]
-coqui = [
-  "TTS>=0.22; python_version < '3.12'",
-]
+# Coqui TTS is intentionally NOT an extra here: it hard-pins pandas<2.0,
+# which is incompatible with the base install. Use a separate research env.
 mms = [
   "transformers>=4.44",
   "torch>=2.3",
@@ -51,7 +50,10 @@ mms = [
 ]
 eval = [
   "jiwer>=3.0",
-  # UTMOS/MCD tools are often installed from model repos; pin after validation.
+]
+# Optional hosted provider; base imports must not depend on it.
+gemini = [
+  "google-genai>=2.25.0",
 ]
 dev = [
   "pytest>=8.2",
@@ -85,6 +87,9 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+  "live: opt-in network test against the real Gemini API (requires ZOLAI_TTS_RUN_LIVE=1 and a key)",
+]
 
 [tool.mypy]
 python_version = "3.11"
