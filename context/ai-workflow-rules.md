@@ -71,8 +71,8 @@ implementing:
 Do not modify the following unless explicitly instructed:
 
 - `dataset/` artifacts — schemas are versioned, but large audio, corpora and checkpoints stay outside git (source: docs/architecture.md, AGENTS.md).
-- `docs/` — committed architecture and guidelines are the current PROPOSED source of truth until implementation exists (source: git ls-tree -r HEAD -- docs).
-- `src/` — empty in HEAD; any added package layout must be recorded in `docs/architecture.md` and this context set first (source: git ls-tree -r HEAD -- src, AGENTS.md).
+- `docs/` — committed architecture and guidelines are the current source of truth for the implemented scaffold; `docs/roadmap.md` is deprecated (source: `docs/architecture.md`, `git ls-files docs`).
+- `src/` — 18 tracked files implement the package layout in HEAD; any added package layout must be recorded in `docs/architecture.md` and this context set first (source: `git ls-files src`, `docs/architecture.md`, AGENTS.md).
 
 ## Keeping Docs in Sync
 
@@ -108,10 +108,10 @@ When a check passes in one environment but fails in another
 (e.g. local vs CI vs on-box), record the delta before adjudicating:
 
 - Runtime version — Python is declared in `project.yaml` and `pyproject.toml`; uv is the declared package manager; exact versions are UNKNOWN — source: project.yaml, pyproject.toml.
-- Dependency tree — no lockfile is present in HEAD (source: git ls-tree -r HEAD).
+- Dependency tree — `uv.lock` is tracked in HEAD as the resolved dependency lock; local installs may still differ (source: `git ls-files uv.lock`).
 - Env vars and secret presence — names only, never values: no environment variables are declared in HEAD manifests; do not commit API keys, tokens or private speaker data (source: pyproject.toml, README.md, AGENTS.md).
 - Network reachability — Hugging Face and Kaggle are named as PROPOSED hosts for large artifacts (source: docs/architecture.md).
-- Filesystem paths — `docs/` is committed, `src/` is empty and `dataset/`, `configs/`, `scripts/` are PROPOSED paths (source: git ls-tree -r HEAD, README.md).
+- Filesystem paths — `docs/`, `src/`, `dataset/` and `configs/` are committed; `scripts/` remains a PROPOSED path (source: `git ls-files`, README.md).
 
 A failure explained entirely by a recorded delta is an environment gap,
 not a code regression — fix the environment or pin the dependency.

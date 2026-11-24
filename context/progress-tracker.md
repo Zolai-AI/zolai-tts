@@ -17,6 +17,7 @@ Update this file after every meaningful implementation change.
 - 2026-11-24 — Fixed manifest resolution: removed the unsatisfiable Coqui extra (`pandas<2.0` vs base `>=2.2`); documented Coqui as a separate research environment.
 - 2026-11-24 — Updated README, `docs/architecture.md`, `docs/framework-selection.md`, `docs/dataset-guidelines.md`, `docs/pronunciation.md`, `context/architecture.md`, `context/code-standards.md`, `context/project-overview.md`, this tracker, CHANGELOG, and absorbed `.ignore`.
 - Prior — replaced six context scaffolds with committed HEAD evidence; aligned with canonical workspace SDLC and source-of-truth (source: git history).
+- 2026-11-24 — Corrected stale HEAD-state claims in `context/ai-workflow-rules.md` (implemented `src/`, tracked `uv.lock`, committed `dataset/`/`configs/`, `docs/` status) and recorded local pytest environment divergence here. Files: `context/ai-workflow-rules.md`, `context/progress-tracker.md`. Impact: workflow rules match the implemented scaffold; no runtime behavior changed.
 
 ## In Progress
 
@@ -44,6 +45,7 @@ Update this file after every meaningful implementation change.
 ## Verification Evidence
 
 - `uv run --extra dev python -m pytest`: 38 passed, 1 skipped (offline; live Gemini skipped).
+- 2026-11-24 — Environment divergence, NOT a regression: bare `PYTHONPATH=src python3 -m pytest -q -rs` on this box reports 36 passed / 3 skipped (39 total) — 2 `importorskip` skips because `phonemizer` is not installed here, plus 1 opt-in live skip. `phonemizer>=3.2` is a base dependency (`pyproject.toml:28`), so the documented `uv run --extra dev` path is expected to report 38 passed / 1 skipped; that result was NOT observed on this box and is not claimed here.
 - `uv run --extra dev python -m ruff check src tests`: all checks passed.
 - `uv run --extra dev python -m mypy src`: no issues in 18 source files.
 - `pytest --markers` registers `live`; `pytest -m live -rs` reports one skip with no key.
