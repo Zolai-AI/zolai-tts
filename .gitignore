@@ -53,3 +53,6 @@ wandb/
 # Local scratch
 tmp/
 .cache/
+
+# Batch TTS audio output (manifests stay tracked under manifests/)
+artifacts/

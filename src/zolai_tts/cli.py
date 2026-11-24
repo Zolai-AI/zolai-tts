@@ -7,6 +7,7 @@ It must not persist secrets, and it stores runtime state outside the git repo.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import platform
@@ -14,6 +15,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any
 
 from zolai_tts import __version__, runtime
@@ -260,6 +262,54 @@ def cmd_gemini_smoke(args: argparse.Namespace) -> int:
         return 1
 
 
+
+def cmd_env(args: argparse.Namespace) -> int:
+    action = args.env_action
+    root = Path.cwd()
+    template = root / ".env.example"
+    target = Path(args.path)
+    if not target.is_absolute():
+        target = root / target
+
+    if action == "show":
+        _print(f"template={template} exists={template.exists()}")
+        _print(f"target={target} exists={target.exists()}")
+        if template.exists():
+            _print("Template keys:")
+            for line in template.read_text(encoding="utf-8").splitlines():
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key = line.split("=", 1)[0].strip()
+                if key:
+                    present = bool(os.getenv(key))
+                    _print(f"  - {key}: {'present' if present else 'missing'}")
+        _print(
+            "No secret values are printed. Edit the target file locally "
+            "and keep it uncommitted."
+        )
+        return 0
+
+    if action == "init":
+        if not template.exists():
+            _print(f"Missing template: {template}", err=True)
+            return 2
+        if target.exists() and not args.force:
+            _print(
+                f"Refusing to overwrite existing {target}. Use --force to overwrite.",
+                err=True,
+            )
+            return 2
+        target.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+        with contextlib.suppress(OSError):
+            os.chmod(target, 0o600)
+        _print(f"Generated {target} from .env.example")
+        _print("Next: edit the file, fill placeholders, keep it local (never commit real secrets).")
+        _print("Keys are read from environment at runtime; export/source as needed in your shell.")
+        return 0
+
+    _print(f"Unknown env action: {action}", err=True)
+    return 2
+
 def cmd_openrouter_smoke(args: argparse.Namespace) -> int:
     key_name = next((n for n in OPENROUTER_KEY_NAMES if os.getenv(n)), None)
     if not key_name:
@@ -337,6 +387,16 @@ def _menu_actions() -> list[tuple[str, str, Callable[[], int]]]:
             "doctor",
             lambda: cmd_doctor(argparse.Namespace(json=False)),
         ),
+        (
+            "Generate .env from .env.example",
+            "env init",
+            lambda: cmd_env(argparse.Namespace(env_action="init", path=".env", force=False)),
+        ),
+        (
+            "Show env template/status",
+            "env show",
+            lambda: cmd_env(argparse.Namespace(env_action="show", path=".env", force=False)),
+        ),
         ("UI status", "ui status", lambda: cmd_ui(argparse.Namespace(ui_action="status"))),
         (
             "UI start (localhost:7860)",
@@ -370,7 +430,30 @@ def _menu_actions() -> list[tuple[str, str, Callable[[], int]]]:
             "ui logs",
             lambda: cmd_ui(argparse.Namespace(ui_action="logs", lines=40)),
         ),
+        (
+            "UI open (print URL)",
+            "ui open",
+            lambda: cmd_ui(argparse.Namespace(ui_action="open", launch=False)),
+        ),
         ("Run checks (ruff+mypy+pytest)", "check", lambda: cmd_check(argparse.Namespace())),
+        ("Run tests (pytest)", "test", lambda: cmd_test(argparse.Namespace(args=[]))),
+        ("Run lint (ruff)", "lint", lambda: cmd_lint(argparse.Namespace(args=[]))),
+        ("Run typecheck (mypy)", "typecheck", lambda: cmd_typecheck(argparse.Namespace(args=[]))),
+        (
+            "Prepare --help",
+            "prepare --help",
+            lambda: cmd_prepare(argparse.Namespace(args=["--help"])),
+        ),
+        (
+            "Synth --help",
+            "synth --help",
+            lambda: cmd_synth(argparse.Namespace(args=["--help"])),
+        ),
+        (
+            "UI app foreground (--help)",
+            "ui-app --help",
+            lambda: cmd_ui_cmd(argparse.Namespace(args=["--help"])),
+        ),
         (
             "Gemini smoke (env-only, no live call)",
             "gemini-smoke",
@@ -458,6 +541,18 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--json", action="store_true")
     doctor.set_defaults(func=cmd_doctor)
 
+    env_cmd = sub.add_parser("env", help="Generate or inspect local .env from .env.example")
+    env_sub = env_cmd.add_subparsers(dest="env_action", required=True)
+    env_init = env_sub.add_parser(
+        "init", help="Generate .env from .env.example (placeholders only)"
+    )
+    env_init.add_argument("--path", default=".env", help="Target env file path (default: .env)")
+    env_init.add_argument("--force", action="store_true", help="Overwrite target if it exists")
+    env_init.set_defaults(func=cmd_env)
+    env_show = env_sub.add_parser("show", help="Show .env.example and target status (no values)")
+    env_show.add_argument("--path", default=".env", help="Target env file path (default: .env)")
+    env_show.set_defaults(func=cmd_env)
+
     check = sub.add_parser("check", help="Run ruff, mypy, pytest")
     check.set_defaults(func=cmd_check)
 
@@ -509,6 +604,11 @@ def build_parser() -> argparse.ArgumentParser:
     or_smoke.add_argument("--response-format", default="mp3")
     or_smoke.add_argument("--out", default="/tmp/opencode/zolai-tts-openrouter-smoke.mp3")
     or_smoke.set_defaults(func=cmd_openrouter_smoke)
+
+    # Batch TTS (dry-run default; --live opt-in) — see zolai_tts.batch.
+    from zolai_tts.batch import add_batch_parser
+
+    add_batch_parser(sub)
 
     return parser
 

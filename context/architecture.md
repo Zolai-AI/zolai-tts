@@ -13,7 +13,7 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 | Text | phonemizer (fallback), custom rules | G2P fallback and ZVS 2018-safe normalization | pyproject.toml, docs/pronunciation.md |
 | Data | jsonschema, pyyaml, pandas | Metadata validation and config loading | pyproject.toml, docs/architecture.md |
 | CLI | argparse, tqdm, rich | Console scripts and terminal output | pyproject.toml, src/zolai_tts |
-| Synthesis backends | Piper (local), optional Gemini/OpenRouter (hosted/OpenAI-compatible) | Real local voice path and experimental hosted demos | pyproject.toml, README.md |
+| Synthesis backends | Piper (local), OpenRouter (default hosted), Gemini (optional alternate), Fish Audio via OpenRouter (hosted/OpenAI-compatible) | Real local voice path and experimental hosted demos | pyproject.toml, README.md, `src/zolai_tts/batch.py` |
 | AI SDK layer | internal `ai_sdk` + optional `openai`/`litellm`/`pydantic-ai-slim` | Config resolution and capability-gated adapters | pyproject.toml, src/zolai_tts/ai_sdk |
 | Testing | pytest, ruff, mypy | Dev tooling declared in the manifest | pyproject.toml |
 
@@ -24,7 +24,10 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 - `src/zolai_tts/frontend/` — implemented ZVS 2018-safe normalization, provisional G2P and phonemizer fallback (source: `docs/architecture.md`, `tests/test_normalize.py`, `tests/test_g2p.py`).
 - `src/zolai_tts/data/` — implemented JSON Schema validation and LJSpeech/Piper text manifest writers (source: `dataset/schemas/`, `src/zolai_tts/data/`).
 - `src/zolai_tts/inference/` — implemented `TTSProvider` protocol, frozen `SynthesisResult`, canonical registry and synthesis CLI (source: `src/zolai_tts/inference/`).
-- `src/zolai_tts/providers/` — implemented Piper adapter (real voice), optional Gemini adapter, and optional OpenRouter/OpenAI-compatible adapter (source: `src/zolai_tts/providers/`).
+- `src/zolai_tts/providers/` — implemented Piper adapter, optional Gemini adapter, and optional OpenRouter/OpenAI-compatible adapter (source: `src/zolai_tts/providers/`).
+- `src/zolai_tts/batch.py` — batch TTS: JSONL → per-item audio + tracked manifest. **Dry-run is the default (no network, no audio, no files); `--live` opts in.** Provider matrix (A7): `openrouter` (DEFAULT, `heygen/heygen-voice-1-turbo:free`, streams 44.1 kHz mono PCM, 39 languages, max 5,000 chars/request, 10 default provider voices, optional bring-your-own HeyGen key for consented clones), `fish-audio` (`fish-audio/s2.1-pro-free:free`, same OpenRouter SDK path + same env key, no-cost/low-volume testing tier), `gemini` (optional alternate, `interactions.create` v1beta `gemini-3.8-flash-tts`). Free models carry `production_guarantee=false` and print that warning in dry-run; no SLA claims either way. Requests are chunked to ≤5,000 chars; streamed raw PCM is wrapped into a proper 44.1 kHz mono WAV header (already-WAV/MP3 bytes pass through untouched — no silent corruption) (source: `src/zolai_tts/batch.py`, `tests/test_batch_tts.py`).
+- `src/zolai_tts/voice_lookup.py` — voice resolution: API-first (`GET /api/v1/tts/voices/{voice_key}`), read-only SQLite fallback via `ZOLAI_DB_PATH` (`file:...?mode=ro`). Dry-run resolves offline (never touches the network). Unknown/inactive/missing `voice_key` fails loudly — there is no silent default voice (source: `src/zolai_tts/voice_lookup.py`, `tests/test_voice_resolution.py`).
+- `src/zolai_tts/data/provenance.py` — tracked batch manifest (`schema_version`, `seed`, `provider`, `model`, `voice_key`, `legal_status`, `production_guarantee`, `tags_applied`, per-item `id`/`text`/`sha256`/`tags`/`style`/`audio_path`) plus the publish gate: only `legal_status == 'verified'` is publishable; `unverified` (free-tier terms) hard-blocks. `owner`/`license`/`consent_ref` live in the tracked manifest only, never in the registry DB (source: `src/zolai_tts/data/provenance.py`, `tests/test_batch_tts.py`).
 - `src/zolai_tts/ai_sdk/` — internal AI SDK layer for config/model/base-url/response-format resolution, redacted config views, OpenAI-compatible speech adapter, and capability-gated LiteLLM/PydanticAI adapters (source: `src/zolai_tts/ai_sdk/`).
 - `src/zolai_tts/ui/` — optional local Gradio research/demo UI over existing provider contracts; lazy Gradio import, localhost/`share=False` default, model/base-url/format inputs, mic/upload local media wiring, not a hosted production service (source: `src/zolai_tts/ui/app.py`, `pyproject.toml`).
 - `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py` — management CLI and UI process runtime control (start/stop/restart/status/logs/doctor/check/passthroughs, gemini/openrouter smoke). Orchestrates existing modules only; runtime state/logs outside git; no secret persistence (source: `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py`).
@@ -36,12 +39,14 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 
 - Versioned schemas and small metadata live in `dataset/schemas/` and `dataset/metadata/` (source: `docs/architecture.md`).
 - Large audio, corpora and checkpoints stay outside git in shared storage, Hugging Face or Kaggle (source: `docs/architecture.md`, AGENTS.md).
-- Application database: N/A (source: `pyproject.toml`).
+- Batch audio is written under `artifacts/` (gitignored); the batch manifest is tracked under `manifests/` (source: `.gitignore`, `src/zolai_tts/batch.py`).
+- Application database: none owned by this repo. The TTS voice registry is **read-only** from here — resolved API-first against zolai-core, with a `file:...?mode=ro` SQLite fallback via `ZOLAI_DB_PATH`; this repo never creates or writes that store (source: `src/zolai_tts/voice_lookup.py`, `pyproject.toml`).
 
 ## Auth and Access Model
 
 - No application authentication or access-control model exists (source: `pyproject.toml`, `docs/architecture.md`).
 - API keys are read only inside the optional Gemini adapter at synthesis time, from `ZOLAI_TTS_GEMINI_API_KEY` or `GEMINI_API_KEY` (source: `src/zolai_tts/providers/gemini.py`).
+- Hosted TTS keys are env-only: OpenRouter/Fish Audio use `ZOLAI_TTS_OPENROUTER_API_KEY` or `OPENROUTER_API_KEY` (one key, no new key name per provider); a bring-your-own HeyGen key for consented voice clones is also env-only and requires a consent record — never commit any of them. `zolai-core`'s `/api/v1/tts/*` routes are read-only behind `require_role("member")` (source: `src/zolai_tts/batch.py`, `zolai-core/zolai/api/tts.py`).
 - Never commit API keys, tokens, private speaker data or unpublished recordings (source: README.md, AGENTS.md).
 
 ## System Design & Infrastructure
@@ -49,7 +54,7 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 | Concept | Service / Tech | Notes | Source |
 |---------|---------------|-------|--------|
 | Compute | N/A | Offline CLI tooling; optional local Gradio UI is localhost-only research/demo | pyproject.toml, src/zolai_tts/ui/app.py |
-| Database | N/A | No database dependency | pyproject.toml |
+| Database | None owned; read-only view of the zolai-core TTS registry | API-first voice lookup, `mode=ro` SQLite fallback via `ZOLAI_DB_PATH` | src/zolai_tts/voice_lookup.py |
 | Object Storage | Shared storage / Hugging Face / Kaggle | Home for large artifacts | docs/architecture.md |
 | CDN / Cache / Queue | N/A | No hosted service endpoint | docs/architecture.md |
 | Microservices | zolai-core integration | ZVS rules referenced, not imported | docs/architecture.md |

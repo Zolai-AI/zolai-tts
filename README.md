@@ -149,6 +149,10 @@ uv run --extra openrouter zolai-tts-synth --text "Hello" \
   --out /tmp/opencode/zolai-tts/out/openrouter.mp3
 ```
 
+Previously used free OpenRouter model IDs (availability/quotas/data-use terms can change; **not unlimited-free**):
+- `fish-audio/s2.1-pro-free:free` (Fish Audio S2.1 Pro Free)
+- `heygen/heygen-voice-1-turbo:free` (HeyGen Voice Turbo)
+
 ### Optional AI SDK adapters
 
 ```bash

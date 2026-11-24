@@ -187,7 +187,10 @@ def test_menu_dispatch(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFi
 def test_menu_dispatch_openrouter_smoke(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr("builtins.input", lambda *_: "9")
+    # Menu item index can shift as features are added; select by label.
+    actions = cli._menu_actions()
+    idx = next(i for i, (label, _, _) in enumerate(actions, start=1) if "OpenRouter smoke" in label)
+    monkeypatch.setattr("builtins.input", lambda *_: str(idx))
     called = {"openrouter": False}
 
     def fake_openrouter(_args):

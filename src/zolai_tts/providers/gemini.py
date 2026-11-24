@@ -53,6 +53,33 @@ def build_interaction_request(
     }
 
 
+def build_batch_interaction_request(
+    text: str,
+    *,
+    voice: str,
+    language: str = "en",
+    model: str | None = None,
+    tags: list[str] | None = None,
+    style: str | None = None,
+) -> dict[str, Any]:
+    """Batch payload for the Gemini alternate: verbatim text + verified tags.
+
+    English point-in-time tags become ``<tag>`` markers in the input; ``style``
+    is carried in ``speech_metadata.style``. These two mechanisms are verified
+    for Gemini ONLY — OpenRouter/Fish Audio runs must keep tags/style as
+    manifest source annotations (``tags_applied=false``), never injected.
+    Pure: no key, import or network.
+    """
+    request = build_interaction_request(text, voice=voice, language=language, model=model)
+    if tags:
+        tagged = " ".join(f"<{tag}>" for tag in tags)
+        cell = request["input"][0]["content"][0]
+        cell["text"] = f"{tagged} {cell['text']}"
+    if style:
+        request["speech_metadata"] = {"style": style}
+    return request
+
+
 def _client() -> Any:
     """Create a Gemini client at call time only."""
     key = os.getenv("ZOLAI_TTS_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
