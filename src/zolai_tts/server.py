@@ -67,6 +67,19 @@ _KEY_RE = re.compile(r"^[A-Za-z0-9_.:/-]{1,512}$")
 MAX_TEXT = int(os.getenv("ZOLAI_TTS_MAX_TEXT", "8000"))
 MAX_UPLOAD_BYTES = int(os.getenv("ZOLAI_TTS_MAX_UPLOAD", "104857600"))
 DEFAULT_LANGUAGE = "ted"
+
+# Credential-keyed catalog cache (Studio.catalog) — cleared whenever session
+# secrets change so a newly entered/cleared key refetches immediately.
+_CATALOG_TTL = float(os.getenv("ZOLAI_TTS_CATALOG_TTL_SECONDS", "300"))
+# provider name -> (credential key, timestamp, catalog)
+_CACHE: dict[str, tuple[tuple[str, str], float, Any]] = {}
+
+
+def _catalog_cache_clear() -> None:
+    """Drop the memoized provider catalogs (tests / credential changes)."""
+    _CACHE.clear()
+
+
 MIME_BY_EXT = {
     "wav": "audio/wav",
     "mp3": "audio/mpeg",
@@ -77,7 +90,7 @@ MIME_BY_EXT = {
     "webm": "audio/webm",
     "pcm": "audio/L16",
 }
-RECording_MIMES = ("audio/webm", "audio/ogg", "audio/mpeg", "audio/mp4", "audio/wav")
+RECORDING_MIMES = ("audio/webm", "audio/ogg", "audio/mpeg", "audio/mp4", "audio/wav")
 
 SETTINGS_TIER = "tier_policy"
 SETTINGS_BUDGET = "budget"
@@ -155,8 +168,32 @@ class Studio:
         now = datetime.now(UTC)
         return self.repo.spend(now.replace(day=1, hour=0, minute=0, second=0, microsecond=0))
 
-    def catalog(self, name: str, *, refresh: bool = False, api_key: str | None = None) -> Any:
-        catalog = fetch_catalog(name, api_key=api_key)
+    def catalog(self, name: str, *, refresh: bool = False) -> Any:
+        """Fetch (or reuse) a provider catalog, keyed on the live credentials.
+
+        Keys come from the in-memory secrets store, never from the database, so
+        a session key the user just entered is what actually reaches the provider.
+        """
+        # NOTE: secrets.resolve takes a TUPLE of env names (ZOLAI_TTS_* alias
+        # first), session store then environment.
+        from zolai_tts.catalog import GEMINI_API_KEY_ENVS, OPENROUTER_API_KEY_ENVS
+        from zolai_tts.secrets import resolve
+
+        api_key, _source = resolve(
+            OPENROUTER_API_KEY_ENVS if name == "openrouter" else GEMINI_API_KEY_ENVS
+        )
+        cache_key = (name, api_key or "")
+        hit = _CACHE.get(name)
+        if (
+            not refresh
+            and hit is not None
+            and hit[0] == cache_key
+            and time.time() - hit[1] < _CATALOG_TTL
+        ):
+            catalog = hit[2]
+        else:
+            catalog = fetch_catalog(name, api_key=api_key)
+            _CACHE[name] = (cache_key, time.time(), catalog)
         if catalog.error is None:
             self.persist_catalog(name, catalog)
         return catalog
@@ -259,7 +296,7 @@ def create_app() -> FastAPI:
             "default_language": DEFAULT_LANGUAGE,
             "max_text": MAX_TEXT,
             "audio_extensions": sorted(MIME_BY_EXT),
-            "recording_mimes": list(RECording_MIMES),
+            "recording_mimes": list(RECORDING_MIMES),
             "languages": [
                 {"code": "ted", "label": "Tedim Zolai", "status": "primary"},
                 {"code": "en", "label": "English", "status": "bridge"},
@@ -303,6 +340,7 @@ def create_app() -> FastAPI:
                 set_secret(str(name), "" if value is None else str(value))
         except ValueError as exc:
             return _err(str(exc))
+        _catalog_cache_clear()
         return {"ok": True, **secrets_view()}
 
     @app.delete("/api/secrets/{name}")
@@ -310,6 +348,7 @@ def create_app() -> FastAPI:
         from zolai_tts.secrets import clear
 
         clear(name)
+        _catalog_cache_clear()
         return {"ok": True, **secrets_view()}
 
     @app.get("/api/settings")
@@ -451,11 +490,6 @@ def create_app() -> FastAPI:
             return _err("A voice is required: a local .onnx path for Piper.")
         if not voice:
             return _err("A voice is required.")
-        if meta.get("hosted") and not provider_api_key_present(provider)[0]:
-            return _err(
-                f"{provider} requires an API key. Set {provider_api_key_present(provider)[1]} "
-                "in the environment or add it in Settings."
-            )
 
         ext = fmt or ("wav" if provider in ("piper", "gemini") else "mp3")
         if not _EXT_RE.match(ext):
@@ -490,6 +524,14 @@ def create_app() -> FastAPI:
                     "estimate": estimate.as_dict(),
                 },
                 status=402,
+            )
+
+        # Policy/budget answers come before credential prompts: a blocked call
+        # must report 402 even when no key is configured yet.
+        if meta.get("hosted") and not provider_api_key_present(provider)[0]:
+            return _err(
+                f"{provider} requires an API key. Set {provider_api_key_present(provider)[1]} "
+                "in the environment or add it in Settings."
             )
 
         options: dict[str, Any] = {"language": language}
