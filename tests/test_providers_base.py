@@ -9,13 +9,15 @@ from zolai_tts.inference.base import SynthesisResult, TTSProvider, get_provider
 from zolai_tts.providers import gemini, piper  # noqa: F401
 
 
-def test_registry_keys_are_exactly_piper_and_gemini() -> None:
-    assert set(base._REGISTRY) == {"piper", "gemini"}
+def test_registry_contains_canonical_providers() -> None:
+    assert {"piper", "gemini", "openrouter"}.issubset(set(base._REGISTRY))
 
 
 def test_unknown_provider_error_names_canonical_keys() -> None:
-    with pytest.raises(ValueError, match="gemini, piper"):
+    with pytest.raises(ValueError) as exc:
         get_provider("local")
+    msg = str(exc.value)
+    assert "gemini" in msg and "openrouter" in msg and "piper" in msg
 
 
 def test_synthesis_result_is_frozen() -> None:

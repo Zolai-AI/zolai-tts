@@ -65,6 +65,30 @@ def test_gemini_smoke_dry_with_key_redacts(
     assert secret not in out
 
 
+def test_openrouter_smoke_dry_without_key_fails_cleanly(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("ZOLAI_TTS_OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    code = cli.main(["openrouter-smoke"])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "No OpenRouter API key" in err
+
+
+def test_openrouter_smoke_dry_with_key_redacts(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    secret = "super-secret-openrouter-key-1234"
+    monkeypatch.setenv("OPENROUTER_API_KEY", secret)
+    code = cli.main(["openrouter-smoke"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "present, value redacted" in out
+    assert secret not in out
+    assert "Dry smoke only" in out
+
+
 def test_prepare_passthrough(monkeypatch: pytest.MonkeyPatch) -> None:
     called: dict[str, object] = {}
 
@@ -158,6 +182,23 @@ def test_menu_dispatch(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFi
     assert code == 0
     assert called["doctor"] is True
     assert "Zolai-TTS menu" in capsys.readouterr().out
+
+
+def test_menu_dispatch_openrouter_smoke(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("builtins.input", lambda *_: "9")
+    called = {"openrouter": False}
+
+    def fake_openrouter(_args):
+        called["openrouter"] = True
+        return 0
+
+    monkeypatch.setattr(cli, "cmd_openrouter_smoke", fake_openrouter)
+    code = cli.main(["menu"])
+    assert code == 0
+    assert called["openrouter"] is True
+    assert "OpenRouter smoke" in capsys.readouterr().out
 
 
 def test_ui_open_prints_url_without_launch(

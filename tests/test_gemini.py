@@ -35,6 +35,14 @@ def test_build_request_uses_v1beta_interactions_payload() -> None:
     assert "annotations" not in request
 
 
+def test_model_config_resolution_default_gemini_model() -> None:
+    from zolai_tts.ai_sdk.config import resolve_audio_config
+
+    cfg = resolve_audio_config(provider="gemini", cli={"voice": "Kore", "language": "zolai"})
+    assert cfg.model == "gemini-3.8-flash-tts"
+    assert cfg.provider == "gemini"
+
+
 def test_build_request_rejects_unsupported_language() -> None:
     with pytest.raises(ValueError, match="Unsupported Gemini language"):
         gemini.build_interaction_request("hi", voice="Kore", language="mizo")

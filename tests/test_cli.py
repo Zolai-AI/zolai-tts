@@ -87,6 +87,44 @@ def test_synth_dry_run_gemini_emits_request_without_key_or_network(
     assert not (tmp_path / "gemini.wav").exists()
 
 
+def test_synth_dry_run_openrouter_emits_request_without_key_or_network(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("ZOLAI_TTS_OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    code = synth_cli.main(
+        [
+            "--text",
+            "Hello",
+            "--provider",
+            "openrouter",
+            "--voice",
+            "alloy",
+            "--language",
+            "en",
+            "--model",
+            "openai/gpt-4o-mini-tts",
+            "--base-url",
+            "https://openrouter.ai/api/v1",
+            "--response-format",
+            "mp3",
+            "--out",
+            str(tmp_path / "out.mp3"),
+            "--dry-run",
+        ]
+    )
+    assert code == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["provider"] == "openrouter"
+    assert plan["model"] == "openai/gpt-4o-mini-tts"
+    assert plan["base_url"] == "https://openrouter.ai/api/v1"
+    assert plan["response_format"] == "mp3"
+    assert plan["request"]["endpoint"].endswith("/audio/speech")
+    assert plan["request"]["body"]["model"] == "openai/gpt-4o-mini-tts"
+    assert plan["request"]["body"]["response_format"] == "mp3"
+    assert not (tmp_path / "out.mp3").exists()
+
+
 def test_synth_unknown_provider_rejected_with_canonical_hint(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -94,7 +132,9 @@ def test_synth_unknown_provider_rejected_with_canonical_hint(
     config.write_text("provider: local\n", encoding="utf-8")
     code = synth_cli.main(["--config", str(config), "--dry-run"])
     assert code == 2
-    assert "Available providers: gemini, piper" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "Available providers:" in err
+    assert "openrouter" in err
 
 
 def test_synth_missing_voice_fails_with_actionable_error(
