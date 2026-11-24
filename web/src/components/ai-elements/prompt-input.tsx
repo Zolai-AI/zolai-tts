@@ -1,5 +1,7 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
+
 import {
   Command,
   CommandEmpty,
@@ -78,6 +80,9 @@ import {
 // Helpers
 // ============================================================================
 
+// Reads a local blob: URL into a data URL. The raw fetch is intentional here:
+// it resolves an in-memory Blob (no server request, no cacheable key), so it is
+// not a data-fetching concern and stays a plain helper driven by useMutation.
 const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
   try {
     const response = await fetch(url);
@@ -713,6 +718,47 @@ export const PromptInput = ({
     clearReferencedSources();
   }, [clearAttachments, clearReferencedSources]);
 
+  // Submit flow (blob→dataURL conversion + onSubmit) runs as a react-query
+  // mutation so pending/error state is managed by the query cache instead of
+  // manual flags. Inputs are cleared only on success.
+  const submitMutation = useMutation({
+    mutationFn: async ({
+      files: submittedFiles,
+      text,
+      event,
+    }: {
+      files: (FileUIPart & { id: string })[];
+      text: string;
+      event: FormEvent<HTMLFormElement>;
+    }) => {
+      // Convert blob URLs to data URLs asynchronously
+      const convertedFiles: FileUIPart[] = await Promise.all(
+        submittedFiles.map(async ({ id: _id, ...item }) => {
+          if (item.url?.startsWith("blob:")) {
+            const dataUrl = await convertBlobUrlToDataUrl(item.url);
+            // If conversion failed, keep the original blob URL
+            return {
+              ...item,
+              url: dataUrl ?? item.url,
+            };
+          }
+          return item;
+        })
+      );
+
+      await onSubmit({ files: convertedFiles, text }, event);
+    },
+    onSuccess: () => {
+      clear();
+      if (usingProvider) {
+        controller.textInput.clear();
+      }
+    },
+    onError: () => {
+      // Don't clear on error - user may want to retry
+    },
+  });
+
   // Let provider know about our hidden file input so external menus can call openFileDialog()
   useEffect(() => {
     if (!usingProvider) {
@@ -859,47 +905,9 @@ export const PromptInput = ({
         form.reset();
       }
 
-      try {
-        // Convert blob URLs to data URLs asynchronously
-        const convertedFiles: FileUIPart[] = await Promise.all(
-          files.map(async ({ id: _id, ...item }) => {
-            if (item.url?.startsWith("blob:")) {
-              const dataUrl = await convertBlobUrlToDataUrl(item.url);
-              // If conversion failed, keep the original blob URL
-              return {
-                ...item,
-                url: dataUrl ?? item.url,
-              };
-            }
-            return item;
-          })
-        );
-
-        const result = onSubmit({ files: convertedFiles, text }, event);
-
-        // Handle both sync and async onSubmit
-        if (result instanceof Promise) {
-          try {
-            await result;
-            clear();
-            if (usingProvider) {
-              controller.textInput.clear();
-            }
-          } catch {
-            // Don't clear on error - user may want to retry
-          }
-        } else {
-          // Sync function completed without throwing, clear inputs
-          clear();
-          if (usingProvider) {
-            controller.textInput.clear();
-          }
-        }
-      } catch {
-        // Don't clear on error - user may want to retry
-      }
+      await submitMutation.mutateAsync({ files, text, event });
     },
-    [usingProvider, controller, files, onSubmit, clear]
+    [usingProvider, controller, files, submitMutation]
   );
 
   // Render with or without local provider

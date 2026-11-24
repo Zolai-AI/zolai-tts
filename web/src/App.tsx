@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Alert,
@@ -56,8 +56,16 @@ import {
   AudioPlayerTimeDisplay,
   AudioPlayerTimeRange,
 } from '@/components/ai-elements/audio-player'
-import { api, queryKeys } from '@/lib/api'
-import type { Catalog, SynthesizeRequest, SynthesizeResponse } from '@/lib/types'
+import { queryKeys } from '@/lib/api'
+import {
+  useCatalogsQueries,
+  useProvidersQuery,
+  useRecordingsQuery,
+  useRunsQuery,
+  useSynthesizeMutation,
+  useUploadRecordingMutation,
+} from '@/hooks/use-api'
+import type { Catalog, SynthesizeResponse } from '@/lib/types'
 
 const LANGUAGES = ['ted', 'zolai', 'zomi', 'en'] as const
 const CUSTOM = '__custom__' 
@@ -79,10 +87,7 @@ function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const lastProvider = useRef('')
 
-  const providersQuery = useQuery({
-    queryKey: queryKeys.providers,
-    queryFn: api.providers,
-  })
+  const providersQuery = useProvidersQuery()
   const providers = providersQuery.data?.providers ?? []
   useEffect(() => {
     if (!providers.length) return
@@ -93,13 +98,7 @@ function App() {
     )
   }, [providers])
 
-  const catalogQueries = useQueries({
-    queries: providers.map((item) => ({
-      queryKey: queryKeys.catalog(item.name),
-      queryFn: () => api.catalog(item.name),
-      enabled: providers.length > 0,
-    })),
-  })
+  const catalogQueries = useCatalogsQueries(providers.map((item) => item.name))
   const catalogs = Object.fromEntries(
     catalogQueries.flatMap((query) => {
       const catalog = query.data?.catalog
@@ -107,11 +106,8 @@ function App() {
     }),
   ) as Record<string, Catalog>
 
-  const runsQuery = useQuery({ queryKey: queryKeys.runs, queryFn: api.runs })
-  const recordingsQuery = useQuery({
-    queryKey: queryKeys.recordings,
-    queryFn: api.recordings,
-  })
+  const runsQuery = useRunsQuery()
+  const recordingsQuery = useRecordingsQuery()
 
   const activeProvider = providers.find((item) => item.name === provider)
   const catalog = catalogs[provider]
@@ -120,24 +116,20 @@ function App() {
   const formats = modelInfo?.formats.length ? modelInfo.formats : (catalog?.formats ?? ['wav'])
   const loading = providersQuery.isPending
   const error = providersQuery.error instanceof Error ? providersQuery.error.message : ''
-  const synthMutation = useMutation({
-    mutationFn: (payload: SynthesizeRequest) => api.synthesize(payload),
-    onSuccess: async (response) => {
+  const synthMutation = useSynthesizeMutation({
+    onSuccess: (response) => {
       setResult(response)
       toast.success(response.dry_run ? 'Dry run ready' : 'Synthesis complete')
-      await queryClient.invalidateQueries({ queryKey: queryKeys.runs })
     },
     onError: (cause) => {
       toast.error(cause instanceof Error ? cause.message : String(cause))
     },
   })
 
-  const uploadMutation = useMutation({
-    mutationFn: (form: FormData) => api.uploadRecording(form),
-    onSuccess: async () => {
+  const uploadMutation = useUploadRecordingMutation({
+    onSuccess: () => {
       toast.success('Recording saved locally')
       setNote('')
-      await queryClient.invalidateQueries({ queryKey: queryKeys.recordings })
     },
     onError: (cause) => {
       toast.error(cause instanceof Error ? cause.message : String(cause))
