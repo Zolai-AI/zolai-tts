@@ -14,9 +14,11 @@ import warnings
 from pathlib import Path
 from typing import Any
 
+from zolai_tts.ai_sdk.config import resolve_audio_config
 from zolai_tts.inference.base import ProviderError, SynthesisResult, register_provider
 
-GEMINI_MODEL = "gemini-3.8-flash-tts"
+GEMINI_DEFAULT_MODEL = "gemini-3.8-flash-tts"
+GEMINI_MODEL = GEMINI_DEFAULT_MODEL  # backward-compatible constant
 GEMINI_API_VERSION = "v1beta"
 GEMINI_DIRECT_LANGUAGES = frozenset({"en"})
 GEMINI_ZOLAI_LANGUAGES = frozenset({"ted", "zolai", "zomi"})
@@ -30,15 +32,21 @@ _ZOLAI_WARNING = (
 )
 
 
-def build_interaction_request(text: str, *, voice: str, language: str) -> dict[str, Any]:
+def build_interaction_request(
+    text: str, *, voice: str, language: str, model: str | None = None
+) -> dict[str, Any]:
     """Build the v1beta Interactions payload. Pure: no key, import or network."""
     if language not in GEMINI_LANGUAGES:
         accepted = ", ".join(sorted(GEMINI_LANGUAGES))
         raise ValueError(
             f"Unsupported Gemini language {language!r}. Accepted: {accepted}."
         )
+    config = resolve_audio_config(
+        provider="gemini",
+        cli={"model": model, "voice": voice, "language": language},
+    )
     return {
-        "model": GEMINI_MODEL,
+        "model": config.model or GEMINI_DEFAULT_MODEL,
         "input": [{"type": "user_input", "content": [{"type": "text", "text": text}]}],
         "response_format": {"type": "audio"},
         "generation_config": {"speech_config": [{"voice": voice}]},
@@ -63,17 +71,20 @@ class GeminiProvider:
 
     name = "gemini"
 
-    def __init__(self, *, language: str = "zolai") -> None:
+    def __init__(self, *, language: str = "zolai", model: str | None = None) -> None:
         if language not in GEMINI_LANGUAGES:
             accepted = ", ".join(sorted(GEMINI_LANGUAGES))
             raise ValueError(
                 f"Unsupported Gemini language {language!r}. Accepted: {accepted}."
             )
         self.language = language
+        self.model = model
 
     def synthesize(self, text: str, voice: str, out_path: Path) -> SynthesisResult:
         """Synthesize audio through the Gemini Interactions API."""
-        request = build_interaction_request(text, voice=voice, language=self.language)
+        request = build_interaction_request(
+            text, voice=voice, language=self.language, model=self.model
+        )
         if self.language in GEMINI_ZOLAI_LANGUAGES:
             warnings.warn(_ZOLAI_WARNING, UserWarning, stacklevel=2)
         client = _client()
@@ -87,7 +98,7 @@ class GeminiProvider:
             voice=voice,
             metadata={
                 "language": self.language,
-                "model": GEMINI_MODEL,
+                "model": request["model"],
                 "api_version": GEMINI_API_VERSION,
                 "experimental": str(self.language in GEMINI_ZOLAI_LANGUAGES),
             },

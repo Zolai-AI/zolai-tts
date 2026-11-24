@@ -13,11 +13,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from zolai_tts.ai_sdk.config import resolve_audio_config
 from zolai_tts.inference.base import ProviderError, get_provider
 from zolai_tts.inference.synthesize import load_config
 
 # Registration side effects only; neither module imports an SDK at module scope.
-from zolai_tts.providers import gemini, piper  # noqa: F401
+from zolai_tts.providers import gemini, openrouter, piper  # noqa: F401
 
 _UI_INSTALL_HINT = (
     "Gradio UI is not installed. Install with: uv sync --extra ui "
@@ -34,19 +35,50 @@ def _require_gradio() -> Any:
 
 
 def _plan(
-    *, provider: str, voice: str | None, language: str, text: str, out: str | None
+    *,
+    provider: str,
+    voice: str | None,
+    language: str,
+    text: str,
+    out: str | None,
+    model: str | None = None,
+    base_url: str | None = None,
+    response_format: str | None = None,
 ) -> dict[str, Any]:
+    config = resolve_audio_config(
+        provider=provider,
+        cli={
+            "model": model,
+            "base_url": base_url,
+            "voice": voice,
+            "language": language,
+            "response_format": response_format,
+        },
+    )
     plan: dict[str, Any] = {
         "provider": provider,
         "voice": voice,
         "language": language,
+        "model": config.model,
+        "base_url": config.base_url,
+        "response_format": config.response_format,
+        "config": config.redacted(),
         "text": text,
         "out": out,
         "mode": "dry-run",
     }
     if provider == "gemini":
         plan["request"] = gemini.build_interaction_request(
-            text, voice=voice or "", language=language
+            text, voice=voice or "", language=language, model=model
+        )
+    if provider == "openrouter":
+        plan["request"] = openrouter.build_openrouter_request(
+            text,
+            voice=voice or "",
+            language=language,
+            model=model,
+            base_url=base_url,
+            response_format=response_format,
         )
     return plan
 
@@ -56,12 +88,18 @@ def synthesize_ui(
     provider: str,
     language: str,
     voice: str,
+    model: str,
+    base_url: str,
+    response_format: str,
     out_path: str,
     dry_run: bool,
 ) -> tuple[dict[str, Any], str | None]:
     """Run synthesis/dry-run for the UI and return (result_json, audio_path)."""
     text = (text or "").strip()
     voice = (voice or "").strip()
+    model = (model or "").strip()
+    base_url = (base_url or "").strip()
+    response_format = (response_format or "").strip()
     out_path = (out_path or "").strip()
     if not text:
         return {"ok": False, "error": "Text is required."}, None
@@ -73,6 +111,9 @@ def synthesize_ui(
             language=language,
             text=text,
             out=out_path or None,
+            model=model or None,
+            base_url=base_url or None,
+            response_format=response_format or None,
         )
         return {"ok": True, "result": plan}, None
 
@@ -90,7 +131,15 @@ def synthesize_ui(
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            selected = get_provider(provider, language=language)
+            options: dict[str, Any] = {"language": language}
+            if provider in {"gemini", "openrouter"} and model:
+                options["model"] = model
+            if provider == "openrouter":
+                if base_url:
+                    options["base_url"] = base_url
+                if response_format:
+                    options["response_format"] = response_format
+            selected = get_provider(provider, **options)
             result = selected.synthesize(text, voice, Path(out_path))
         payload: dict[str, Any] = {
             "ok": True,
@@ -114,7 +163,7 @@ def build_app(*, config_path: Path | None = None) -> Any:
     config = load_config(config_path)
 
     default_provider = str(config.get("provider") or "piper")
-    if default_provider not in {"piper", "gemini"}:
+    if default_provider not in {"piper", "gemini", "openrouter"}:
         default_provider = "piper"
     default_language = str(config.get("language") or "ted")
     if default_language not in {"ted", "zolai", "zomi", "en"}:
@@ -124,8 +173,8 @@ def build_app(*, config_path: Path | None = None) -> Any:
         gr.Markdown(
             "# Zolai TTS\n"
             "Local research/demo UI over existing Zolai-TTS providers. "
-            "Piper is the real local voice path; Gemini is optional/experimental "
-            "and has no native Tedim/Zolai/Zomi TTS support."
+            "Piper is the real local voice path; Gemini/OpenRouter are optional hosted "
+            "paths and have no native Tedim/Zolai/Zomi TTS support."
         )
         with gr.Row():
             text = gr.Textbox(
@@ -137,7 +186,7 @@ def build_app(*, config_path: Path | None = None) -> Any:
         with gr.Row():
             provider = gr.Dropdown(
                 label="Provider",
-                choices=["piper", "gemini"],
+                choices=["piper", "gemini", "openrouter"],
                 value=default_provider,
             )
             language = gr.Dropdown(
@@ -149,11 +198,33 @@ def build_app(*, config_path: Path | None = None) -> Any:
             voice = gr.Textbox(
                 label="Voice / model path",
                 value=str(config.get("voice") or ""),
-                placeholder="Piper: /path/to/voice.onnx | Gemini: voice name e.g. Kore",
+                placeholder="Piper: /path/to/voice.onnx | Gemini/OpenRouter: voice name",
             )
+            model = gr.Textbox(
+                label="Model (optional)",
+                value=str(config.get("model") or ""),
+                placeholder="gemini-3.8-flash-tts | openai/gpt-4o-mini-tts",
+            )
+        with gr.Row():
+            base_url = gr.Textbox(
+                label="Base URL (optional, OpenAI-compatible)",
+                value=str(config.get("base_url") or ""),
+                placeholder="https://openrouter.ai/api/v1 or local Ollama endpoint",
+            )
+            response_format = gr.Textbox(
+                label="Response format (optional)",
+                value=str(config.get("response_format") or ""),
+                placeholder="wav, mp3, opus (model/provider dependent)",
+            )
+        with gr.Row():
             out_path = gr.Textbox(
-                label="Output WAV path (real synthesis)",
+                label="Output audio path (real synthesis)",
                 value=str(config.get("out") or "/tmp/opencode/zolai-tts-ui/out.wav"),
+            )
+            gr.Audio(
+                label="Mic/Upload (OSS, not persisted by default)",
+                sources=["microphone", "upload"],
+                type="filepath",
             )
         dry_run = gr.Checkbox(label="Dry run (no audio, no key/model required)", value=True)
         run = gr.Button("Synthesize / Dry run", variant="primary")
@@ -161,13 +232,17 @@ def build_app(*, config_path: Path | None = None) -> Any:
         audio = gr.Audio(label="Output audio", type="filepath")
         gr.Markdown(
             "Notes: local only (`share=False`), no auth, no secrets stored. "
-            "Gemini free-tier content may be used to improve Google products; "
-            "do not send community data without informed consent."
+            "Mic/upload input is optional local media wiring and is not sent anywhere by this UI. "
+            "Hosted providers may have quota/free-tier/data-use limits; no unlimited-free claims. "
+            "Do not send community data without informed consent."
         )
 
         run.click(
             fn=synthesize_ui,
-            inputs=[text, provider, language, voice, out_path, dry_run],
+            inputs=[
+                text, provider, language, voice, model,
+                base_url, response_format, out_path, dry_run,
+            ],
             outputs=[result_json, audio],
         )
     return demo

@@ -55,6 +55,17 @@ eval = [
 gemini = [
   "google-genai>=2.25.0",
 ]
+# OpenAI-compatible SDK for OpenRouter/OpenAI-style speech endpoints.
+openrouter = [
+  "openai>=1.0.0",
+]
+# Optional broader AI SDK adapters (capability-gated, lazy imports).
+ai-litellm = [
+  "litellm>=1.0.0",
+]
+ai-pydantic = [
+  "pydantic-ai-slim>=0.0.1",
+]
 # Optional local research UI; base imports must not import gradio.
 ui = [
   "gradio>=6.32,<7",

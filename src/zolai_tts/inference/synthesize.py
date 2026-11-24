@@ -1,4 +1,4 @@
-"""Synthesis CLI with canonical providers: ``piper`` (real voice) or ``gemini``."""
+"""Synthesis CLI with canonical providers: ``piper``, ``gemini``, ``openrouter``."""
 
 from __future__ import annotations
 
@@ -9,10 +9,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from zolai_tts.ai_sdk.config import resolve_audio_config
 from zolai_tts.inference.base import ProviderError, get_provider
 
 # Registration side effects only; neither module imports an SDK at module scope.
-from zolai_tts.providers import gemini, piper  # noqa: F401
+from zolai_tts.providers import gemini, openrouter, piper  # noqa: F401
 
 
 def load_config(path: Path | None) -> dict[str, Any]:
@@ -28,14 +29,36 @@ def load_config(path: Path | None) -> dict[str, Any]:
 
 
 def _plan(
-    *, provider: str, voice: str | None, language: str, text: str, out: str | None
+    *,
+    provider: str,
+    voice: str | None,
+    language: str,
+    text: str,
+    out: str | None,
+    model: str | None = None,
+    base_url: str | None = None,
+    response_format: str | None = None,
 ) -> dict[str, Any]:
+    config = resolve_audio_config(
+        provider=provider,
+        cli={
+            "model": model,
+            "base_url": base_url,
+            "voice": voice,
+            "language": language,
+            "response_format": response_format,
+        },
+    )
     return {
         "provider": provider,
         "voice": voice,
         "language": language,
         "text": text,
         "out": out,
+        "model": config.model,
+        "base_url": config.base_url,
+        "response_format": config.response_format,
+        "config": config.redacted(),
         "mode": "dry-run",
     }
 
@@ -48,9 +71,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--text")
     parser.add_argument("--text-file", type=Path)
-    parser.add_argument("--provider", choices=("piper", "gemini"))
+    parser.add_argument("--provider", choices=("piper", "gemini", "openrouter"))
     parser.add_argument("--voice")
     parser.add_argument("--language", choices=("ted", "zolai", "zomi", "en"))
+    parser.add_argument(
+        "--model",
+        help="Provider model id (e.g. gemini-3.8-flash-tts, openai/gpt-4o-mini-tts)",
+    )
+    parser.add_argument("--base-url", help="Optional OpenAI-compatible base URL override")
+    parser.add_argument(
+        "--response-format",
+        help="Optional audio format (provider/model dependent, e.g. wav, mp3)",
+    )
     parser.add_argument("--out")
     parser.add_argument("--config", type=Path)
     parser.add_argument("--dry-run", action="store_true")
@@ -61,12 +93,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.text is not None and args.text_file is not None:
             raise ValueError("Use only one of --text or --text-file")
         provider = args.provider or config.get("provider") or "piper"
-        if provider not in ("piper", "gemini"):
+        if provider not in ("piper", "gemini", "openrouter"):
             raise ValueError(
-                f"Unknown provider {provider!r}. Available providers: gemini, piper"
+                f"Unknown provider {provider!r}. Available providers: gemini, openrouter, piper"
             )
         language = args.language or config.get("language") or "ted"
         voice = args.voice or config.get("voice")
+        model = args.model or config.get("model")
+        base_url = args.base_url or config.get("base_url")
+        response_format = args.response_format or config.get("response_format")
         out = args.out or config.get("out")
         if args.text_file is not None:
             text = args.text_file.read_text(encoding="utf-8")
@@ -75,11 +110,30 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         if args.dry_run:
             plan = _plan(
-                provider=provider, voice=voice, language=language, text=text or "", out=out
+                provider=provider,
+                voice=voice,
+                language=language,
+                text=text or "",
+                out=out,
+                model=model,
+                base_url=base_url,
+                response_format=response_format,
             )
             if provider == "gemini":
                 plan["request"] = gemini.build_interaction_request(
-                    text or "", voice=voice or "", language=language
+                    text or "",
+                    voice=voice or "",
+                    language=language,
+                    model=model,
+                )
+            if provider == "openrouter":
+                plan["request"] = openrouter.build_openrouter_request(
+                    text or "",
+                    voice=voice or "",
+                    language=language,
+                    model=model,
+                    base_url=base_url,
+                    response_format=response_format,
                 )
             print(json.dumps(plan, ensure_ascii=False, sort_keys=True))
             return 0
@@ -90,7 +144,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("A real voice is required: pass --voice or config voice")
         if not out:
             raise ValueError("Output path is required: pass --out or config out")
-        selected = get_provider(provider, language=language)
+        provider_options: dict[str, Any] = {"language": language}
+        if provider == "gemini" and model:
+            provider_options["model"] = model
+        if provider == "openrouter":
+            if model:
+                provider_options["model"] = model
+            if base_url:
+                provider_options["base_url"] = base_url
+            if response_format:
+                provider_options["response_format"] = response_format
+        selected = get_provider(provider, **provider_options)
         result = selected.synthesize(text, voice, Path(out))
         print(
             json.dumps(

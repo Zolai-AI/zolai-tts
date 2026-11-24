@@ -19,6 +19,7 @@ from typing import Any
 from zolai_tts import __version__, runtime
 
 GEMINI_KEY_NAMES = ("ZOLAI_TTS_GEMINI_API_KEY", "GEMINI_API_KEY")
+OPENROUTER_KEY_NAMES = ("ZOLAI_TTS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY")
 
 
 def _print(text: str = "", *, err: bool = False) -> None:
@@ -49,7 +50,10 @@ def _doctor_report() -> dict[str, Any]:
         "platform": platform.platform(),
         "cwd": os.getcwd(),
         "state_dir": str(runtime.state_dir()),
-        "env_keys": {name: bool(os.getenv(name)) for name in GEMINI_KEY_NAMES},
+        "env_keys": {
+            **{name: bool(os.getenv(name)) for name in GEMINI_KEY_NAMES},
+            **{name: bool(os.getenv(name)) for name in OPENROUTER_KEY_NAMES},
+        },
         "tools": {
             "uv": shutil.which("uv") is not None,
             "ruff": shutil.which("ruff") is not None,
@@ -62,7 +66,7 @@ def _doctor_report() -> dict[str, Any]:
         "gpu": {"torch_installed": False, "cuda_available": False, "device_count": 0},
     }
 
-    for mod in ("gradio", "google.genai", "piper", "torch"):
+    for mod in ("gradio", "google.genai", "piper", "openai", "litellm", "pydantic_ai", "torch"):
         try:
             __import__(mod)
             report["modules"][mod] = True
@@ -106,7 +110,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     _print(f"Python: {report['python']}  Platform: {report['platform']}")
     _print(f"State dir: {report['state_dir']}")
     _print("Env keys (presence only):")
-    for name in GEMINI_KEY_NAMES:
+    for name in (*GEMINI_KEY_NAMES, *OPENROUTER_KEY_NAMES):
         _print(f"  - {_mask_present(name)}")
     _print("Tools:")
     for name, ok in report["tools"].items():
@@ -227,14 +231,15 @@ def cmd_gemini_smoke(args: argparse.Namespace) -> int:
         return 0
 
     try:
-        from zolai_tts.providers.gemini import GEMINI_MODEL, build_interaction_request
+        from zolai_tts.providers.gemini import build_interaction_request
     except Exception as exc:
         _print(f"Gemini provider unavailable: {exc}", err=True)
         return 2
 
-    # Live check via existing provider path; never print request text containing secrets.
-    req = build_interaction_request("Pasian", voice=args.voice, language=args.language)
-    _print(f"Live smoke request prepared for model={GEMINI_MODEL}; sending...")
+    req = build_interaction_request(
+        "Pasian", voice=args.voice, language=args.language, model=args.model
+    )
+    _print(f"Live smoke request prepared for model={req['model']}; sending...")
     try:
         from zolai_tts.providers import gemini as gemini_mod
 
@@ -246,9 +251,78 @@ def cmd_gemini_smoke(args: argparse.Namespace) -> int:
         _print(f"Live smoke ok. output_audio present={bool(data)} encoded_size={size}")
         return 0
     except Exception as exc:
-        # Avoid leaking secrets in exception messages by redacting env values if present.
         msg = str(exc)
         for name in GEMINI_KEY_NAMES:
+            val = os.getenv(name)
+            if val:
+                msg = msg.replace(val, f"<{name}:redacted>")
+        _print(f"Live smoke failed: {msg}", err=True)
+        return 1
+
+
+def cmd_openrouter_smoke(args: argparse.Namespace) -> int:
+    key_name = next((n for n in OPENROUTER_KEY_NAMES if os.getenv(n)), None)
+    if not key_name:
+        _print(
+            "No OpenRouter API key in environment. "
+            "Set ZOLAI_TTS_OPENROUTER_API_KEY or OPENROUTER_API_KEY.",
+            err=True,
+        )
+        return 2
+    _print(f"OpenRouter key detected: {key_name} (present, value redacted)")
+    try:
+        from zolai_tts.providers.openrouter import build_openrouter_request
+    except Exception as exc:
+        _print(f"OpenRouter provider unavailable: {exc}", err=True)
+        return 2
+
+    req = build_openrouter_request(
+        "Hello from Zolai-TTS smoke test.",
+        voice=args.voice,
+        language=args.language,
+        model=args.model,
+        base_url=args.base_url,
+        response_format=args.response_format,
+    )
+    _print(json.dumps({"mode": "dry-run", "request": req}, indent=2, sort_keys=True))
+    if not args.live:
+        _print(
+            "Dry smoke only. Re-run with --live to perform a real API request "
+            "(uses quota/credits)."
+        )
+        return 0
+
+    try:
+        from pathlib import Path
+
+        from zolai_tts.ai_sdk.config import resolve_audio_config
+        from zolai_tts.ai_sdk.openai_compat import synthesize_speech
+        from zolai_tts.ai_sdk.types import AudioRequest
+
+        config = resolve_audio_config(
+            provider="openrouter",
+            cli={
+                "model": args.model,
+                "base_url": args.base_url,
+                "voice": args.voice,
+                "language": args.language,
+                "response_format": args.response_format,
+            },
+        )
+        out = Path(args.out)
+        result = synthesize_speech(
+            AudioRequest(
+                text="Hello from Zolai-TTS smoke test.",
+                voice=args.voice,
+                out_path=out,
+                config=config,
+            )
+        )
+        _print(f"Live smoke ok. out_path={result.out_path} bytes={out.stat().st_size}")
+        return 0
+    except Exception as exc:
+        msg = str(exc)
+        for name in OPENROUTER_KEY_NAMES:
             val = os.getenv(name)
             if val:
                 msg = msg.replace(val, f"<{name}:redacted>")
@@ -301,7 +375,22 @@ def _menu_actions() -> list[tuple[str, str, Callable[[], int]]]:
             "Gemini smoke (env-only, no live call)",
             "gemini-smoke",
             lambda: cmd_gemini_smoke(
-                argparse.Namespace(live=False, voice="Kore", language="zolai")
+                argparse.Namespace(live=False, voice="Kore", language="zolai", model=None)
+            ),
+        ),
+        (
+            "OpenRouter smoke (env-only, no live call)",
+            "openrouter-smoke",
+            lambda: cmd_openrouter_smoke(
+                argparse.Namespace(
+                    live=False,
+                    voice="alloy",
+                    language="en",
+                    model=None,
+                    base_url=None,
+                    response_format="mp3",
+                    out="/tmp/opencode/zolai-tts-openrouter-smoke.mp3",
+                )
             ),
         ),
         ("Exit", "exit", lambda: 0),
@@ -404,7 +493,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     smoke.add_argument("--voice", default="Kore")
     smoke.add_argument("--language", default="zolai", choices=["ted", "zolai", "zomi", "en"])
+    smoke.add_argument("--model", default=None, help="Optional Gemini model override")
     smoke.set_defaults(func=cmd_gemini_smoke)
+
+    or_smoke = sub.add_parser(
+        "openrouter-smoke", help="Check OpenRouter key presence; optional live request"
+    )
+    or_smoke.add_argument(
+        "--live", action="store_true", help="Perform a real API request (uses quota/credits)."
+    )
+    or_smoke.add_argument("--voice", default="alloy")
+    or_smoke.add_argument("--language", default="en", choices=["ted", "zolai", "zomi", "en"])
+    or_smoke.add_argument("--model", default=None, help="Optional OpenRouter model id")
+    or_smoke.add_argument("--base-url", default=None, help="Optional OpenAI-compatible base URL")
+    or_smoke.add_argument("--response-format", default="mp3")
+    or_smoke.add_argument("--out", default="/tmp/opencode/zolai-tts-openrouter-smoke.mp3")
+    or_smoke.set_defaults(func=cmd_openrouter_smoke)
 
     return parser
 
