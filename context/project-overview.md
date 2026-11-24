@@ -36,10 +36,12 @@ README.md, `src/zolai_tts/`.
 ### In Scope
 
 - Offline research tooling, schemas, small metadata, docs and tests (source: README.md, docs/architecture.md).
+- Optional local Gradio UI for synth/dry-run research demos (`ui` extra, localhost, `share=False` default) (source: `src/zolai_tts/ui/app.py`, README.md).
 - Optional hosted provider for Zolai/Zomi demos with explicit warning (source: README.md, `src/zolai_tts/providers/gemini.py`).
 
 ### Out of Scope
 
+- Production/hosted TTS service, authentication, persistent job queue, or cloud sharing by default (source: README.md, `src/zolai_tts/ui/app.py`).
 - Production TTS system and trained community voice (source: README.md).
 - From-scratch model implementation and training runs (source: docs/architecture.md).
 - Committing audio, corpora, checkpoints, API keys or unpublished speaker data (source: docs/architecture.md, AGENTS.md).

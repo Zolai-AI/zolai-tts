@@ -28,15 +28,17 @@ Text (Tedim/Zolai/Zomi)
 | Inference CLI | `src/zolai_tts/inference/synthesize.py` | Provider selection, config precedence, dry-run planning | `argparse`, `pyyaml` |
 | Piper adapter | `src/zolai_tts/providers/piper.py` | Real Zolai voice through a supplied ONNX model | lazy `piper-tts` |
 | Gemini adapter | `src/zolai_tts/providers/gemini.py` | Optional Zolai/Zomi demo, v1beta Interactions, consent warning | lazy `google-genai>=2.25.0` |
+| Optional local UI | `src/zolai_tts/ui/app.py` | Local Gradio demo over existing synth/provider contracts; dry-run supported | lazy `gradio` (optional `ui` extra) |
 | Evaluation | `src/zolai_tts/evaluation/` | Duration helper and dependency-free Markdown report | `soundfile`, stdlib |
 
 ## Boundary Rules
 
 - Tedim-specific linguistic knowledge lives in `frontend/` and `docs/pronunciation.md`; ZVS 2018 is cited from `zolai-core` by reference, never copied.
-- Framework-specific code stays in `providers/` and `configs/`.
+- Framework-specific code stays in `providers/` and `configs/`. Optional local UI code lives in `ui/` and is an optional extra.
 - Large audio/checkpoints stay outside git; versioned schemas live in `dataset/schemas/`.
-- Base imports make no network call, read no key and import no optional backend.
+- Base imports make no network call, read no key and import no optional backend/UI package.
 - `piper` is the real Zolai voice; Gemini is optional, experimental, and never a substitute.
+- The Gradio UI is a local research/demo interface only (`share=False` default, localhost bind); it is not a hosted production service.
 
 ## External Integrations
 

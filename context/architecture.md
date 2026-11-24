@@ -24,6 +24,7 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 - `src/zolai_tts/data/` — implemented JSON Schema validation and LJSpeech/Piper text manifest writers (source: `dataset/schemas/`, `src/zolai_tts/data/`).
 - `src/zolai_tts/inference/` — implemented `TTSProvider` protocol, frozen `SynthesisResult`, canonical registry and synthesis CLI (source: `src/zolai_tts/inference/`).
 - `src/zolai_tts/providers/` — implemented Piper adapter (real voice) and optional Gemini adapter (source: `src/zolai_tts/providers/`).
+- `src/zolai_tts/ui/` — optional local Gradio research/demo UI over existing provider contracts; lazy Gradio import, localhost/`share=False` default, not a hosted production service (source: `src/zolai_tts/ui/app.py`, `pyproject.toml`).
 - `src/zolai_tts/evaluation/` — implemented duration helper and Markdown report renderer (source: `src/zolai_tts/evaluation/`).
 - `configs/`, `dataset/schemas/`, `dataset/metadata/` — committed example config, versioned schemas and placeholder metadata (source: `configs/`, `dataset/`).
 - `tests/` — offline pytest suite plus opt-in `live` marker (source: `pyproject.toml`, `tests/`).
@@ -44,13 +45,13 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 
 | Concept | Service / Tech | Notes | Source |
 |---------|---------------|-------|--------|
-| Compute | N/A | Offline CLI tooling; no service runtime | pyproject.toml |
+| Compute | N/A | Offline CLI tooling; optional local Gradio UI is localhost-only research/demo | pyproject.toml, src/zolai_tts/ui/app.py |
 | Database | N/A | No database dependency | pyproject.toml |
 | Object Storage | Shared storage / Hugging Face / Kaggle | Home for large artifacts | docs/architecture.md |
-| CDN / Cache / Queue | N/A | No service endpoint | docs/architecture.md |
+| CDN / Cache / Queue | N/A | No hosted service endpoint | docs/architecture.md |
 | Microservices | zolai-core integration | ZVS rules referenced, not imported | docs/architecture.md |
 | Observability | Local logs / optional experiment tracking | No hosted service in this slice | README.md |
-| Streaming / Realtime | N/A | Batch CLI design only | docs/architecture.md |
+| Streaming / Realtime | N/A | Batch CLI/UI form design only | docs/architecture.md |
 
 ## Scaling & Performance Constraints
 
@@ -59,10 +60,11 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 ## Invariants
 
 1. Framework-first: Tedim language logic in `frontend/`, synthesis delegated to adapters (source: `docs/architecture.md`).
-2. Framework-specific code stays in `providers/` and `configs/`; no from-scratch model implementation (source: `docs/architecture.md`).
+2. Framework-specific code stays in `providers/` and `configs/`; optional local UI stays in `ui/` as an extra. No from-scratch model implementation (source: `docs/architecture.md`).
 3. Large audio and checkpoints stay outside git (source: `docs/architecture.md`, AGENTS.md).
 4. Dataset schemas are versioned in `dataset/schemas/` (source: `docs/architecture.md`).
 5. ZVS 2018 is ground truth by reference to `zolai-core`; no cross-repo copy or invented phonology/numerals (source: `docs/pronunciation.md`).
-6. Base imports make no network call, read no key and import no optional backend (source: `src/zolai_tts`, `tests/test_gemini.py`).
+6. Base imports make no network call, read no key and import no optional backend/UI package (source: `src/zolai_tts`, `tests/test_gemini.py`, `src/zolai_tts/ui/app.py`).
 7. Canonical provider keys are exactly `piper` and `gemini`; there is no `local` alias (source: `src/zolai_tts/inference/base.py`).
 8. Piper is the real Zolai voice; Gemini uses `ted`/`zolai`/`zomi` only as experimental demos with a free-tier/consent warning (source: `src/zolai_tts/providers/gemini.py`, README.md).
+9. Optional UI is local research/demo only: localhost bind, `share=False` default, no auth/production claims (source: `src/zolai_tts/ui/app.py`, README.md).

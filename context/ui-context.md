@@ -2,31 +2,31 @@
 
 ## Theme
 
-N/A — no UI in HEAD (source: git ls-tree -r HEAD)
+Lightweight local research/demo UI. Minimal, no custom brand assets; default Gradio theme (source: `src/zolai_tts/ui/app.py`).
 
 ## Colors
 
-N/A — no UI in HEAD (source: git ls-tree -r HEAD)
+Default Gradio/system palette. No custom brand colors committed (source: `src/zolai_tts/ui/app.py`).
 
 ## Typography
 
-N/A — no UI in HEAD (source: git ls-tree -r HEAD)
+System/default Gradio fonts. No custom font assets (source: `src/zolai_tts/ui/app.py`).
 
 ## Border Radius
 
-N/A — no UI in HEAD (source: git ls-tree -r HEAD)
+Default Gradio component radius (source: `src/zolai_tts/ui/app.py`).
 
 ## Component Library
 
-N/A — no UI in HEAD (source: git ls-tree -r HEAD)
+Gradio Blocks (optional `ui` extra, `gradio>=6.32,<7`) for a local-only synth/dry-run form (source: `pyproject.toml`, `src/zolai_tts/ui/app.py`).
 
 ## Layout Patterns
 
-N/A — no UI in HEAD (source: git ls-tree -r HEAD)
+Single-page form: text input, provider/language selectors, voice/out path fields, dry-run checkbox, run button, JSON result, audio output. Localhost bind, `share=False` by default; no auth, no persistent queue (source: `src/zolai_tts/ui/app.py`).
 
 ## Icons
 
-N/A — no UI in HEAD (source: git ls-tree -r HEAD)
+No custom icon set; Gradio defaults only (source: `src/zolai_tts/ui/app.py`).
 
 ## Skills (UI / UX)
 

@@ -21,9 +21,11 @@
 - `NUMBER_WORDS` is an explicit no-op stub; do not invent Tedim numerals or copy ZVS tables across repos.
 - Python remains authoritative for language tooling; no NestJS or Rust service layer is added (source: AGENTS.md).
 
-## Styling
+## Styling / UI
 
-- N/A — no UI (source: `docs/architecture.md`).
+- Optional local UI lives in `src/zolai_tts/ui/` and uses Gradio Blocks via the optional `ui` extra. Gradio must be imported lazily inside `build_app()`/`main()`; base imports must not import Gradio or optional synthesis backends (source: `src/zolai_tts/ui/app.py`, `pyproject.toml`).
+- UI is local research/demo only: bind localhost, default `share=False`, no auth/production claims, no persistent queue. Do not add cloud sharing by default (source: `src/zolai_tts/ui/app.py`).
+- UI tests must `pytest.importorskip("gradio")`, must not launch a server, and must not make network calls (source: `tests/test_ui.py`).
 
 ## API Routes
 

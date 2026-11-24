@@ -55,6 +55,10 @@ eval = [
 gemini = [
   "google-genai>=2.25.0",
 ]
+# Optional local research UI; base imports must not import gradio.
+ui = [
+  "gradio>=6.32,<7",
+]
 dev = [
   "pytest>=8.2",
   "pytest-cov>=5.0",
@@ -70,8 +74,10 @@ Repository = "https://github.com/Zolai-AI/zolai-tts"
 Issues = "https://github.com/Zolai-AI/zolai-tts/issues"
 
 [project.scripts]
+zolai-tts = "zolai_tts.cli:main"
 zolai-tts-prepare = "zolai_tts.data.preprocess:main"
 zolai-tts-synth = "zolai_tts.inference.synthesize:main"
+zolai-tts-ui = "zolai_tts.ui.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/zolai_tts"]

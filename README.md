@@ -54,6 +54,7 @@ zolai-tts/
 │   ├── data/                   # preprocess.py, validate.py, formats.py
 │   ├── inference/              # base.py (protocol/registry), synthesize.py (CLI)
 │   ├── providers/              # piper.py (real voice), gemini.py (optional demo)
+│   ├── ui/                     # optional local Gradio UI (lazy import)
 │   └── evaluation/             # objective.py, report.py
 ├── tests/                      # Offline pytest suite + opt-in live marker
 └── research/                   # Baselines and paper notes
@@ -82,6 +83,20 @@ uv run zolai-tts-synth --text "Pasian in leitung a piangsak hi." \
 
 `--dry-run` writes no audio and needs no key or backend. Real synthesis requires a
 real ONNX voice supplied via `--voice`; none is committed.
+
+## Optional Local UI (Gradio)
+
+```bash
+uv sync --extra dev --extra ui
+uv run --extra ui zolai-tts-ui --help
+uv run --extra ui zolai-tts-ui  # local only, share=False by default
+```
+
+- The UI is a lightweight local research/demo surface; it is not a hosted production service.
+- Gradio is an optional dependency (`ui` extra) and is imported lazily — base installs/imports do not require it.
+- Use **Dry run** to validate provider/language/voice/request planning with no key/model/network.
+- Piper real synthesis requires a local ONNX voice; `piper-tts` is unavailable on Python >=3.13, so use dry-run or an external Python <3.13 Piper environment for real Piper audio.
+- Gemini is optional/experimental for Tedim/Zolai/Zomi, warns on use, and reads keys only from env at synthesis time. Never commit keys.
 
 ## Optional Gemini Provider
 
