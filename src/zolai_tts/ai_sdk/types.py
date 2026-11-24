@@ -1,4 +1,5 @@
 """Dataclasses and capability flags for the internal AI SDK layer."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

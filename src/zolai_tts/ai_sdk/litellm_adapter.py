@@ -4,6 +4,7 @@ Capability-gated: this adapter provides request/config helpers and support
 metadata only. Direct TTS execution is not wired into the canonical provider
 registry because LiteLLM speech support depends on the selected model/backend.
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -2,6 +2,7 @@
 
 Imports `openai` lazily. No network calls at import time.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -53,13 +54,14 @@ def synthesize_speech(request: AudioRequest) -> AudioResult:
         raise ValueError("Output path is required for synthesis")
     body = build_speech_request(request)
 
-    import os
+    from zolai_tts.secrets import get_secret
 
     env_name = request.config.api_key_env or "OPENROUTER_API_KEY"
+    # Session store first, then environment — same precedence as presence.
     api_key = (
-        os.getenv(env_name)
-        or os.getenv("OPENROUTER_API_KEY")
-        or os.getenv("ZOLAI_TTS_OPENROUTER_API_KEY")
+        get_secret(env_name)
+        or get_secret("OPENROUTER_API_KEY")
+        or get_secret("ZOLAI_TTS_OPENROUTER_API_KEY")
     )
     if not api_key:
         raise ProviderError(
@@ -95,7 +97,7 @@ def synthesize_speech(request: AudioRequest) -> AudioResult:
         ):
             if not name:
                 continue
-            val = os.getenv(name)
+            val = get_secret(name)
             if val:
                 msg = msg.replace(val, f"<{name}:redacted>")
         raise ProviderError(f"{request.config.provider} synthesis failed: {msg}") from exc

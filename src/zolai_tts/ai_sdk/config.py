@@ -3,11 +3,14 @@
 Precedence: CLI args > config YAML > environment > defaults.
 No network calls. API keys are checked for presence only; values never returned.
 """
+
 from __future__ import annotations
 
 import os
 from collections.abc import Mapping
 from typing import Any
+
+from zolai_tts.secrets import get_secret
 
 from .types import ModelConfig
 
@@ -20,7 +23,7 @@ PROVIDER_DEFAULTS: dict[str, dict[str, Any]] = {
         "language": "ted",
     },
     "gemini": {
-        "model": "gemini-3.8-flash-tts",
+        "model": "gemini-2.5-flash-preview-tts",
         "base_url": None,
         "api_key_envs": ("ZOLAI_TTS_GEMINI_API_KEY", "GEMINI_API_KEY"),
         "response_format": "wav",
@@ -64,7 +67,8 @@ def _first_nonempty(*values: Any) -> Any:
 
 def _env_first(names: tuple[str, ...]) -> str | None:
     for name in names:
-        value = os.getenv(name)
+        # Session store first (keys added in Settings), then real environment.
+        value = get_secret(name)
         if value and value.strip():
             return value.strip()
     return None
@@ -78,7 +82,7 @@ def provider_api_key_envs(provider: str) -> tuple[str, ...]:
 
 def provider_api_key_present(provider: str) -> tuple[bool, str | None]:
     for name in provider_api_key_envs(provider):
-        if os.getenv(name):
+        if get_secret(name):
             return True, name
     envs = provider_api_key_envs(provider)
     return False, envs[0] if envs else None
@@ -177,6 +181,6 @@ def _env_first_from(names: tuple[str, ...], env_map: Mapping[str, str]) -> str |
 def _key_present(provider: str, env_map: Mapping[str, str]) -> tuple[bool, str | None]:
     envs = provider_api_key_envs(provider)
     for name in envs:
-        if env_map.get(name):
+        if get_secret(name) if env_map is os.environ else env_map.get(name):
             return True, name
     return False, envs[0] if envs else None

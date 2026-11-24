@@ -7,9 +7,7 @@ from collections.abc import Mapping
 from zolai_tts.inference.base import SynthesisResult
 
 
-def render_report(
-    result: SynthesisResult, metrics: Mapping[str, float] | None = None
-) -> str:
+def render_report(result: SynthesisResult, metrics: Mapping[str, float] | None = None) -> str:
     """Render a short Markdown evaluation report."""
     lines = [
         "# Zolai-TTS synthesis report",

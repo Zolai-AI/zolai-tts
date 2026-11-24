@@ -7,7 +7,7 @@ text: "Pasian in leitung a piangsak hi."
 out: /tmp/opencode/zolai-tts/out/synth.wav
 
 # Optional model/config fields (CLI overrides config; env overrides defaults):
-# model: gemini-3.8-flash-tts
+# model: gemini-2.5-flash-preview-tts
 # model: openai/gpt-4o-mini-tts
 # base_url: https://openrouter.ai/api/v1
 # base_url: http://localhost:11434/v1  # local OpenAI-compatible endpoint (Ollama/OpenCode-style), if it supports /audio/speech

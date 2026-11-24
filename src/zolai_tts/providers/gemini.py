@@ -9,7 +9,6 @@ The SDK is imported and the API key is read only inside ``synthesize``.
 from __future__ import annotations
 
 import base64
-import os
 import warnings
 from pathlib import Path
 from typing import Any
@@ -17,8 +16,9 @@ from typing import Any
 from zolai_tts.ai_sdk.config import resolve_audio_config
 from zolai_tts.inference.base import ProviderError, SynthesisResult, register_provider
 
-GEMINI_DEFAULT_MODEL = "gemini-3.8-flash-tts"
+GEMINI_DEFAULT_MODEL = "gemini-2.5-flash-preview-tts"
 GEMINI_MODEL = GEMINI_DEFAULT_MODEL  # backward-compatible constant
+GEMINI_KEY_NAMES = ("ZOLAI_TTS_GEMINI_API_KEY", "GEMINI_API_KEY")
 GEMINI_API_VERSION = "v1beta"
 GEMINI_DIRECT_LANGUAGES = frozenset({"en"})
 GEMINI_ZOLAI_LANGUAGES = frozenset({"ted", "zolai", "zomi"})
@@ -38,9 +38,7 @@ def build_interaction_request(
     """Build the v1beta Interactions payload. Pure: no key, import or network."""
     if language not in GEMINI_LANGUAGES:
         accepted = ", ".join(sorted(GEMINI_LANGUAGES))
-        raise ValueError(
-            f"Unsupported Gemini language {language!r}. Accepted: {accepted}."
-        )
+        raise ValueError(f"Unsupported Gemini language {language!r}. Accepted: {accepted}.")
     config = resolve_audio_config(
         provider="gemini",
         cli={"model": model, "voice": voice, "language": language},
@@ -82,7 +80,9 @@ def build_batch_interaction_request(
 
 def _client() -> Any:
     """Create a Gemini client at call time only."""
-    key = os.getenv("ZOLAI_TTS_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+    from zolai_tts.secrets import get_secret
+
+    key = get_secret("ZOLAI_TTS_GEMINI_API_KEY") or get_secret("GEMINI_API_KEY")
     if not key:
         raise ProviderError(
             "Gemini requires an API key. Set ZOLAI_TTS_GEMINI_API_KEY or "
@@ -93,6 +93,18 @@ def _client() -> Any:
     return genai.Client(api_key=key, http_options={"api_version": GEMINI_API_VERSION})
 
 
+def _redact_key_values(message: str) -> str:
+    """Never let an SDK exception echo the API key into a run record."""
+    from zolai_tts.secrets import get_secret
+
+    out = message
+    for name in GEMINI_KEY_NAMES:
+        value = get_secret(name)
+        if value:
+            out = out.replace(value, f"<{name}:redacted>")
+    return out
+
+
 class GeminiProvider:
     """Optional hosted provider for Zolai/Zomi demos and English demos."""
 
@@ -101,9 +113,7 @@ class GeminiProvider:
     def __init__(self, *, language: str = "zolai", model: str | None = None) -> None:
         if language not in GEMINI_LANGUAGES:
             accepted = ", ".join(sorted(GEMINI_LANGUAGES))
-            raise ValueError(
-                f"Unsupported Gemini language {language!r}. Accepted: {accepted}."
-            )
+            raise ValueError(f"Unsupported Gemini language {language!r}. Accepted: {accepted}.")
         self.language = language
         self.model = model
 
@@ -115,10 +125,23 @@ class GeminiProvider:
         if self.language in GEMINI_ZOLAI_LANGUAGES:
             warnings.warn(_ZOLAI_WARNING, UserWarning, stacklevel=2)
         client = _client()
-        interaction = client.interactions.create(**request)
         destination = Path(out_path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(base64.b64decode(interaction.output_audio.data))
+        try:
+            interaction = client.interactions.create(**request)
+            audio = getattr(interaction, "output_audio", None)
+            if not audio or not getattr(audio, "data", None):
+                raise ProviderError(
+                    "Gemini returned no audio for this request "
+                    "(model may not support the voice/language combination)."
+                )
+            destination.write_bytes(base64.b64decode(audio.data))
+        except ProviderError:
+            raise
+        except Exception as exc:
+            # ProviderError (not the raw SDK error) so the API's error handler
+            # returns a structured 502 with a redacted message.
+            raise ProviderError(f"Gemini request failed: {_redact_key_values(str(exc))}") from exc
         return SynthesisResult(
             out_path=destination,
             provider=self.name,

@@ -30,15 +30,15 @@
 ## Styling / UI
 
 - Optional local web API lives in `src/zolai_tts/server.py` (FastAPI, optional `ui` extra); frontend lives in `web/` (React + Vite + Tailwind v4 + shadcn/ui). Server imports must stay lazy so base installs do not need FastAPI/uvicorn (source: `src/zolai_tts/server.py`, `pyproject.toml`, `web/package.json`).
-- UI is local research/demo only: bind localhost, default `share=False`, no auth/production claims, no persistent queue. Do not add cloud sharing by default (source: `src/zolai_tts/ui/app.py`).
+- The web studio is local research/demo only: bind localhost, default `share=False`, no auth/production claims, no persistent queue. Do not add cloud sharing by default (source: `src/zolai_tts/server.py`, `web/vite.config.ts`).
 - API tests use FastAPI `TestClient`, monkeypatch catalog/provider fetchers, and must not make network calls or persist secrets (source: `tests/test_ui.py`).
 
 ## CLI / Runtime
 
-- `zolai-tts` is the management CLI (`src/zolai_tts/cli.py`) with subcommands for `menu`, `ui start|stop|restart|status|logs|open`, `doctor`, `check|test|lint|typecheck`, `prepare`, `synth`, `ui-app`, and `gemini-smoke`. It orchestrates existing modules via subprocess/module calls; it must not duplicate synthesis logic.
-- Runtime state/logs are stored outside git (preferred `/tmp/opencode/zolai-tts-<uid>/`, fallback XDG runtime/cache). State JSON contains only PID/host/port/cmd/started_at/log_path/cwd; never store API keys, tokens, or secret values.
+- `zolai-tts` is the management CLI (`src/zolai_tts/cli.py`) with subcommands for `menu`, `ui start|stop|restart|status|logs|open` (API server), `web start|stop|restart|status|logs|open|build` (Vite dev server / `web/dist`), `doctor`, `check|test|lint|typecheck`, `prepare`, `synth`, `ui-app`, `gemini-smoke` and `openrouter-smoke`. It orchestrates existing modules via subprocess/module calls; it must not duplicate synthesis logic. `menu.sh` mirrors this CLI (plus `status`/`up`/`down`/`build`/`open` shorthands) and never reimplements it.
+- Runtime state/logs are stored outside git (preferred `/tmp/opencode/zolai-tts-<uid>/`, fallback XDG runtime/cache), one state file per service (`ui.state.json`, `web.state.json`). State JSON contains only PID/host/port/cmd/started_at/log_path/cwd/service; never store API keys, tokens, or secret values.
 - `doctor` and `*-smoke` commands report environment key presence only and must never print or persist secret values. `gemini-smoke --live` and `openrouter-smoke --live` are opt-in and use quota/network/credits.
-- UI process management must validate PID and cmdline contains `zolai_tts.ui.app` before trusting state; clean stale state.
+- Process management must validate the PID is alive and its `/proc` cmdline matches the service marker (`zolai_tts.server` for api, `vite`/`run dev` for web) before trusting state; clean stale state. Stop signals the whole process group so uvicorn/vite children die with the parent.
 - CLI/runtime tests must be offline: mock subprocess, os.kill, xdg-open, env, and time; use temp state dirs.
 
 ## API Routes

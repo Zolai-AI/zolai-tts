@@ -43,8 +43,7 @@ class PiperProvider:
         voice_path = Path(voice)
         if not voice_path.exists():
             raise VoiceNotFoundError(
-                f"Piper voice model not found: {voice}. "
-                "Supply a real Zolai ONNX voice via --voice."
+                f"Piper voice model not found: {voice}. Supply a real Zolai ONNX voice via --voice."
             )
         if self._load_voice is not None:
             model = self._load_voice(voice)

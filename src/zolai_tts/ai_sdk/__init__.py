@@ -2,6 +2,7 @@
 
 No network calls, no API key reads at import time, no optional heavy deps.
 """
+
 from .config import resolve_audio_config
 from .types import AudioRequest, AudioResult, ModelConfig, ProviderCapabilities
 

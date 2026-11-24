@@ -57,6 +57,7 @@ PCM_SAMPLE_WIDTH = 2  # bytes per sample (16-bit)
 DEFAULT_OUT_DIR = "artifacts"
 DEFAULT_MANIFEST_DIR = "manifests"
 
+
 @dataclass(frozen=True)
 class ProviderSpec:
     """One selectable ``--provider`` entry. Plain strings only (no enums)."""
@@ -106,7 +107,7 @@ PROVIDERS: dict[str, ProviderSpec] = {
     "gemini": ProviderSpec(
         name="gemini",
         config_provider="gemini",
-        default_model="gemini-3.8-flash-tts",
+        default_model="gemini-2.5-flash-preview-tts",
         transport="gemini",
         tags_applied=True,
         production_guarantee=None,
@@ -163,9 +164,7 @@ def load_items(path: Path | str) -> list[dict[str, Any]]:
                     "text": text,
                     "tags": [str(t) for t in tags],
                     "style": (str(record["style"]) if record.get("style") else None),
-                    "source_ref": (
-                        str(record["source_ref"]) if record.get("source_ref") else None
-                    ),
+                    "source_ref": (str(record["source_ref"]) if record.get("source_ref") else None),
                 }
             )
     if not items:
@@ -272,7 +271,12 @@ def _gemini_tags(tags: list[str]) -> str:
 
 
 def build_gemini_payload(
-    text: str, *, spec: ProviderSpec, model: str, voice_id: str, tags: list[str],
+    text: str,
+    *,
+    spec: ProviderSpec,
+    model: str,
+    voice_id: str,
+    tags: list[str],
     style: str | None,
 ) -> dict[str, Any]:
     """Gemini-only payload: verbatim source text + verified ``<...>`` tags and style."""
@@ -329,9 +333,7 @@ def _synthesize_openrouter_chunk(
         provider=spec.config_provider,
         cli={"model": model, "voice": voice_id, "language": "en", "response_format": "pcm"},
     )
-    synthesize_speech(
-        AudioRequest(text=text, voice=voice_id, out_path=part_path, config=config)
-    )
+    synthesize_speech(AudioRequest(text=text, voice=voice_id, out_path=part_path, config=config))
     data = part_path.read_bytes()
     part_path.unlink(missing_ok=True)
     return data
@@ -390,8 +392,7 @@ def merge_wav_parts(parts: list[bytes]) -> bytes | None:
     return buffer.getvalue()
 
 
-def batch_id_for(*, input_path: str, seed: int, voice_key: str, provider: str,
-                 model: str) -> str:
+def batch_id_for(*, input_path: str, seed: int, voice_key: str, provider: str, model: str) -> str:
     """Deterministic short batch id from inputs (no randomness, no secrets)."""
     material = f"{input_path}:{seed}:{voice_key}:{provider}:{model}"
     return hashlib.sha256(material.encode("utf-8")).hexdigest()[:12]
@@ -483,13 +484,20 @@ def run_live(
             style = item["style"] if (spec.tags_applied and index == 0) else None
             if spec.transport == "gemini":
                 data = _synthesize_gemini_chunk(
-                    chunk, spec=spec, model=model, voice_id=voice.provider_voice_id,
-                    tags=tags, style=style,
+                    chunk,
+                    spec=spec,
+                    model=model,
+                    voice_id=voice.provider_voice_id,
+                    tags=tags,
+                    style=style,
                 )
             else:
                 part_path = audio_dir / f"{item['id']}.{index:03d}.part"
                 data = _synthesize_openrouter_chunk(
-                    chunk, spec=spec, model=model, voice_id=voice.provider_voice_id,
+                    chunk,
+                    spec=spec,
+                    model=model,
+                    voice_id=voice.provider_voice_id,
                     part_path=part_path,
                 )
             part_bytes.append(data)
@@ -502,8 +510,7 @@ def run_live(
             audio_paths = []
             for index, data in enumerate(part_bytes):
                 target = audio_dir / (
-                    f"{item['id']}.wav" if len(part_bytes) == 1
-                    else f"{item['id']}.{index:03d}"
+                    f"{item['id']}.wav" if len(part_bytes) == 1 else f"{item['id']}.{index:03d}"
                 )
                 written, fmt = write_audio_bytes(data, target)
                 audio_paths.append(str(written))
@@ -520,8 +527,7 @@ def run_live(
             }
         )
         results.append(
-            {"id": item["id"], "chunks": len(chunks), "format": fmt,
-             "audio": audio_paths[0]}
+            {"id": item["id"], "chunks": len(chunks), "format": fmt, "audio": audio_paths[0]}
         )
 
     manifest = build_manifest(
@@ -571,16 +577,25 @@ def run_batch(args: argparse.Namespace) -> int:
         return 2
 
     batch_id = batch_id_for(
-        input_path=input_path, seed=seed, voice_key=voice.voice_key,
-        provider=spec.name, model=model,
+        input_path=input_path,
+        seed=seed,
+        voice_key=voice.voice_key,
+        provider=spec.name,
+        model=model,
     )
     audio_dir = Path(getattr(args, "out_dir", None) or DEFAULT_OUT_DIR) / batch_id
     manifest_path = Path(DEFAULT_MANIFEST_DIR) / f"{batch_id}.json"
 
     if not args.live:
         plan = plan_for(
-            items=items, voice=voice, spec=spec, model=model, seed=seed,
-            input_path=input_path, batch_id=batch_id, audio_dir=audio_dir,
+            items=items,
+            voice=voice,
+            spec=spec,
+            model=model,
+            seed=seed,
+            input_path=input_path,
+            batch_id=batch_id,
+            audio_dir=audio_dir,
             manifest_path=manifest_path,
         )
         print(json.dumps(plan, indent=2, sort_keys=True, ensure_ascii=False))
@@ -588,8 +603,14 @@ def run_batch(args: argparse.Namespace) -> int:
 
     try:
         summary = run_live(
-            items=items, voice=voice, spec=spec, model=model, seed=seed,
-            input_path=input_path, batch_id=batch_id, audio_dir=audio_dir,
+            items=items,
+            voice=voice,
+            spec=spec,
+            model=model,
+            seed=seed,
+            input_path=input_path,
+            batch_id=batch_id,
+            audio_dir=audio_dir,
             manifest_path=manifest_path,
         )
     except (BatchError, VoiceLookupError) as exc:
@@ -613,21 +634,26 @@ def add_batch_parser(sub: Any) -> None:
     )
     batch.add_argument("--seed", type=int, default=0, help="Batch seed (recorded in manifest)")
     batch.add_argument(
-        "--live", action="store_true",
+        "--live",
+        action="store_true",
         help="Perform real synthesis (uses quota; default is dry-run, no network)",
     )
     batch.add_argument(
-        "--out-dir", default=DEFAULT_OUT_DIR,
+        "--out-dir",
+        default=DEFAULT_OUT_DIR,
         help=f"Audio output root (gitignored; default: {DEFAULT_OUT_DIR})",
     )
     batch.add_argument(
-        "--provider", default="openrouter", choices=list(PROVIDER_NAMES),
+        "--provider",
+        default="openrouter",
+        choices=list(PROVIDER_NAMES),
         help="TTS provider (default: openrouter — HeyGen Voice Turbo free)",
     )
     batch.add_argument(
-        "--model", default=None,
+        "--model",
+        default=None,
         help="Model override (defaults: heygen/heygen-voice-1-turbo:free | "
-        "fish-audio/s2.1-pro-free:free | gemini-3.8-flash-tts)",
+        "fish-audio/s2.1-pro-free:free | gemini-2.5-flash-preview-tts)",
     )
     batch.set_defaults(func=_run_batch_command)
 

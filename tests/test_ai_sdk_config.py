@@ -32,7 +32,7 @@ def test_openrouter_defaults_and_redaction(monkeypatch) -> None:
 
 def test_gemini_default_model_preserved() -> None:
     cfg = resolve_audio_config(provider="gemini", cli={"voice": "Kore", "language": "zolai"})
-    assert cfg.model == "gemini-3.8-flash-tts"
+    assert cfg.model == "gemini-2.5-flash-preview-tts"
 
 
 def test_openrouter_env_base_url_and_format_precedence(monkeypatch) -> None:

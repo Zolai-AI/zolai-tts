@@ -82,7 +82,7 @@ def test_synth_dry_run_gemini_emits_request_without_key_or_network(
     )
     assert code == 0
     plan = json.loads(capsys.readouterr().out)
-    assert plan["request"]["model"] == "gemini-3.8-flash-tts"
+    assert plan["request"]["model"] == "gemini-2.5-flash-preview-tts"
     assert plan["language"] == "zomi"
     assert not (tmp_path / "gemini.wav").exists()
 
@@ -140,9 +140,7 @@ def test_synth_unknown_provider_rejected_with_canonical_hint(
 def test_synth_missing_voice_fails_with_actionable_error(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    code = synth_cli.main(
-        ["--text", "Pasian", "--out", "/tmp/opencode/zolai-tts/no-voice.wav"]
-    )
+    code = synth_cli.main(["--text", "Pasian", "--out", "/tmp/opencode/zolai-tts/no-voice.wav"])
     assert code == 2
     assert "A real voice is required" in capsys.readouterr().err
 

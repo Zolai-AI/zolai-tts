@@ -11,7 +11,7 @@ This project uses a **framework-first** approach: established TTS libraries prov
 | **[Piper](https://github.com/rhasspy/piper)** | Apache-2.0 | Real deployable Tedim/Zolai voice | **Excellent** | ONNX runtime, small footprint, fine-tunable with ~1-2 hrs audio. Adapter implemented; supply your own ONNX voice. |
 | **[MMS-TTS (Meta)](https://huggingface.co/facebook/mms-tts)** | Apache-2.0 | Documented research baseline | Good | No adapter in this slice; evaluate separately. |
 | **Coqui TTS / VITS** | MPL-2.0 | Research experiments | Good | Requires a **separate environment**: it hard-pins `pandas<2.0`, incompatible with this project's base install. Not an extra here. |
-| **Gemini TTS (`gemini-3.8-flash-tts`)** | Proprietary / hosted | Optional Zolai/Zomi demo requests | **Poor as a voice** | Key + network + `google-genai>=2.25.0` + `v1beta`. No native Tedim/Zolai/Zomi support; experimental warning emitted. Free-tier content may improve Google products; consent required. Never replaces Piper. |
+| **Gemini TTS (`gemini-2.5-flash-preview-tts`)** | Proprietary / hosted | Optional Zolai/Zomi demo requests | **Poor as a voice** | Key + network + `google-genai>=2.25.0` + `v1beta`. No native Tedim/Zolai/Zomi support; experimental warning emitted. Free-tier content may improve Google products; consent required. Never replaces Piper. |
 
 ## Decision Checklist
 

@@ -127,8 +127,15 @@ class TestProviderSelection:
 
         parser = build_parser()
         args = parser.parse_args(
-            ["batch", "--input", "s.jsonl", "--provider", "fish-audio",
-             "--model", "fish-audio/s2.1-pro-free:free"]
+            [
+                "batch",
+                "--input",
+                "s.jsonl",
+                "--provider",
+                "fish-audio",
+                "--model",
+                "fish-audio/s2.1-pro-free:free",
+            ]
         )
         assert args.provider == "fish-audio"
         assert spec_for("fish-audio").default_model == "fish-audio/s2.1-pro-free:free"
@@ -147,8 +154,12 @@ class TestProviderSelection:
 class TestPayloadFidelity:
     def test_openrouter_payload_is_verbatim_no_tags(self) -> None:
         body = build_payload(
-            TAGGED_TEXT, spec=OPENROUTER, model=OPENROUTER.default_model,
-            voice_id="heygen-default-1", tags=["whispered"], style="soft",
+            TAGGED_TEXT,
+            spec=OPENROUTER,
+            model=OPENROUTER.default_model,
+            voice_id="heygen-default-1",
+            tags=["whispered"],
+            style="soft",
         )
         assert body["input"] == TAGGED_TEXT  # verbatim, tags NOT injected
         assert body["model"] == "heygen/heygen-voice-1-turbo:free"
@@ -157,23 +168,31 @@ class TestPayloadFidelity:
 
     def test_fish_audio_payload_uses_free_model_id(self) -> None:
         body = build_payload(
-            SAMPLE_TEXT, spec=FISH, model=FISH.default_model,
-            voice_id="heygen-default-1", tags=[], style=None,
+            SAMPLE_TEXT,
+            spec=FISH,
+            model=FISH.default_model,
+            voice_id="heygen-default-1",
+            tags=[],
+            style=None,
         )
         assert body["model"] == "fish-audio/s2.1-pro-free:free"
         assert body["input"] == SAMPLE_TEXT
 
     def test_gemini_payload_applies_tags_ipa_and_style(self) -> None:
         body = build_payload(
-            TAGGED_TEXT, spec=GEMINI, model="gemini-3.8-flash-tts",
-            voice_id="Kore", tags=["point-in-time"], style="calm",
+            TAGGED_TEXT,
+            spec=GEMINI,
+            model="gemini-2.5-flash-preview-tts",
+            voice_id="Kore",
+            tags=["point-in-time"],
+            style="calm",
         )
         text = body["input"][0]["content"][0]["text"]
         assert text.endswith(TAGGED_TEXT)  # source text verbatim at the end
         assert "<point-in-time>" in text
         assert "/ðɛər/" in text  # IPA markers preserved verbatim
         assert body["speech_metadata"] == {"style": "calm"}
-        assert body["model"] == "gemini-3.8-flash-tts"
+        assert body["model"] == "gemini-2.5-flash-preview-tts"
 
     def test_tags_applied_flag_per_provider(self) -> None:
         assert OPENROUTER.tags_applied is False
@@ -198,7 +217,10 @@ class TestDryRun:
         monkeypatch.setattr(socket, "create_connection", banned)
 
     def test_dry_run_writes_no_files_and_prints_plan(
-        self, tmp_path: Path, voice_db: Path, capsys: pytest.CaptureFixture[str],
+        self,
+        tmp_path: Path,
+        voice_db: Path,
+        capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.chdir(tmp_path)
@@ -220,14 +242,18 @@ class TestDryRun:
         assert plan["network"] is False
         assert plan["publishable"] is False  # legal_status unverified ⇒ blocked
         assert any("production_guarantee=false" in w for w in plan["warnings"])
-        assert any("no production latency or availability guarantees" in w
-                   for w in plan["warnings"])
+        assert any(
+            "no production latency or availability guarantees" in w for w in plan["warnings"]
+        )
         # No files created: no artifacts/, no manifests/.
         assert not (tmp_path / "artifacts").exists()
         assert not (tmp_path / "manifests").exists()
 
     def test_dry_run_fish_audio_warns_no_production_guarantee(
-        self, tmp_path: Path, voice_db: Path, capsys: pytest.CaptureFixture[str],
+        self,
+        tmp_path: Path,
+        voice_db: Path,
+        capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.chdir(tmp_path)
@@ -250,12 +276,16 @@ class TestDryRun:
         assert plan["model"] == "fish-audio/s2.1-pro-free:free"
         assert plan["production_guarantee"] is False
         assert any("production_guarantee=false" in w for w in plan["warnings"])
-        assert any("no production latency or availability guarantees" in w
-                   for w in plan["warnings"])
+        assert any(
+            "no production latency or availability guarantees" in w for w in plan["warnings"]
+        )
         assert plan["publishable"] is False
 
     def test_unknown_voice_fails_loudly_no_default(
-        self, tmp_path: Path, voice_db: Path, capsys: pytest.CaptureFixture[str],
+        self,
+        tmp_path: Path,
+        voice_db: Path,
+        capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.chdir(tmp_path)
@@ -268,7 +298,10 @@ class TestDryRun:
         assert "unknown voice_key" in err or "voice" in err
 
     def test_missing_voice_key_fails_loudly(
-        self, tmp_path: Path, voice_db: Path, capsys: pytest.CaptureFixture[str],
+        self,
+        tmp_path: Path,
+        voice_db: Path,
+        capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.chdir(tmp_path)
@@ -324,9 +357,7 @@ class TestAudioHandling:
             assert wav.getsampwidth() == 2
             assert wav.readframes(wav.getnframes()) == pcm
 
-    def test_write_audio_wraps_pcm_and_passes_wav(
-        self, tmp_path: Path
-    ) -> None:
+    def test_write_audio_wraps_pcm_and_passes_wav(self, tmp_path: Path) -> None:
         raw = b"\x03\x04" * 100
         path, fmt = write_audio_bytes(raw, tmp_path / "a1")
         assert fmt == "pcm"
@@ -367,12 +398,25 @@ class TestManifestAndPublishGate:
         from zolai_tts.data.provenance import build_manifest, write_manifest
 
         manifest = build_manifest(
-            batch_id="abc123", seed=7, provider="openrouter",
-            model="heygen/heygen-voice-1-turbo:free", voice_key="seed-voice-1",
+            batch_id="abc123",
+            seed=7,
+            provider="openrouter",
+            model="heygen/heygen-voice-1-turbo:free",
+            voice_key="seed-voice-1",
             legal_status="unverified",
-            items=[{"id": "a1", "text": SAMPLE_TEXT, "sha256": sha256_text(SAMPLE_TEXT),
-                    "tags": ["x"], "style": "calm", "audio_path": "artifacts/a1.wav"}],
-            input_path="s.jsonl", production_guarantee=False, tags_applied=False,
+            items=[
+                {
+                    "id": "a1",
+                    "text": SAMPLE_TEXT,
+                    "sha256": sha256_text(SAMPLE_TEXT),
+                    "tags": ["x"],
+                    "style": "calm",
+                    "audio_path": "artifacts/a1.wav",
+                }
+            ],
+            input_path="s.jsonl",
+            production_guarantee=False,
+            tags_applied=False,
         )
         assert manifest["schema_version"] == 1
         assert manifest["seed"] == 7
@@ -396,8 +440,13 @@ class TestManifestAndPublishGate:
         voice = resolve_voice("seed-voice-1", offline=True, db_path=str(voice_db))
         plan = plan_for(
             items=[{"id": "a1", "text": SAMPLE_TEXT, "tags": [], "style": None}],
-            voice=voice, spec=OPENROUTER, model=OPENROUTER.default_model,
-            seed=0, input_path="s.jsonl", batch_id="b", audio_dir=Path("artifacts/b"),
+            voice=voice,
+            spec=OPENROUTER,
+            model=OPENROUTER.default_model,
+            seed=0,
+            input_path="s.jsonl",
+            batch_id="b",
+            audio_dir=Path("artifacts/b"),
             manifest_path=Path("manifests/b.json"),
         )
         assert plan["publishable"] is False

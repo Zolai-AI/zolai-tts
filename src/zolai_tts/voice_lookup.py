@@ -161,9 +161,7 @@ def resolve_voice(
     """
     key = (voice_key or "").strip()
     if not key:
-        raise VoiceNotFoundError(
-            "voice_key is required; zolai-tts refuses to pick a default voice"
-        )
+        raise VoiceNotFoundError("voice_key is required; zolai-tts refuses to pick a default voice")
 
     base = (api_base or os.getenv(API_BASE_ENV) or DEFAULT_API_BASE).rstrip("/")
     store = db_path if db_path is not None else (os.getenv(DB_PATH_ENV) or "")

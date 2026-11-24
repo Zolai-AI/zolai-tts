@@ -43,7 +43,7 @@ README.md, `src/zolai_tts/`.
 
 ### Out of Scope
 
-- Production/hosted TTS service, authentication, persistent job queue, or cloud sharing by default (source: README.md, `src/zolai_tts/ui/app.py`).
+- Production/hosted TTS service, authentication, persistent job queue, or cloud sharing by default (source: README.md, `src/zolai_tts/server.py`).
 - Production TTS system and trained community voice (source: README.md).
 - From-scratch model implementation and training runs (source: docs/architecture.md).
 - Committing audio, corpora, checkpoints, API keys or unpublished speaker data (source: docs/architecture.md, AGENTS.md).

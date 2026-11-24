@@ -98,21 +98,41 @@ real ONNX voice supplied via `--voice`; none is committed.
 uv run zolai-tts --help
 uv run zolai-tts menu
 uv run zolai-tts doctor
+
+# API server (FastAPI on :7860; serves web/dist when built)
 uv run zolai-tts ui start --host 127.0.0.1 --port 7860
 uv run zolai-tts ui status
 uv run zolai-tts ui logs --lines 40
 uv run zolai-tts ui open            # prints URL; add --launch to use xdg-open
 uv run zolai-tts ui stop
 uv run zolai-tts ui restart
+
+# Web studio (React/Vite dev server on :5174, proxies /api to :7860)
+uv run zolai-tts web start
+uv run zolai-tts web status
+uv run zolai-tts web logs --lines 40
+uv run zolai-tts web stop
+uv run zolai-tts web build           # bun run build -> web/dist (single-port app via API)
+
 uv run zolai-tts check              # ruff + mypy + pytest
 uv run zolai-tts gemini-smoke       # env key presence only; --live is opt-in
 uv run zolai-tts openrouter-smoke   # env key presence only; --live is opt-in (uses quota/credits)
 ```
 
+Quick shell shortcuts (same CLI, no duplicated logic):
+
+```bash
+./menu.sh status     # API + Web JSON status
+./menu.sh up         # API + Vite dev (:7860 + :5174)
+./menu.sh up --build # build web/dist first, API only
+./menu.sh down       # stop both servers
+./menu.sh open       # print/launch the live app URL
+```
+
 - The CLI orchestrates existing modules; it does not duplicate synthesis logic.
-- UI lifecycle state/logs are stored outside git in `/tmp/opencode/zolai-tts-<uid>/` (fallback: XDG runtime/cache dir). State files contain PID/host/port/cmd metadata only — **no API keys or secrets**.
+- Server lifecycle state/logs are stored outside git in `/tmp/opencode/zolai-tts-<uid>/` (fallback: XDG runtime/cache dir) as `ui.state.json`/`web.state.json`. State files contain PID/host/port/cmd metadata only — **no API keys or secrets**.
 - `doctor` and `gemini-smoke` report env key presence only; they never print or persist secret values. `gemini-smoke --live` is opt-in and uses quota.
-- `ui start` runs `python -m zolai_tts.server` in background and validates PID/cmdline on status.
+- `ui start` runs `python -m zolai_tts.server` in background; `web start` runs the Vite dev server from `web/` with `bun` (falls back to `npm`). Status validates the recorded PID against `/proc` cmdline (`zolai_tts.server` / `vite`) and stops the whole process group, so child processes die with the recorded pid; stale state is cleaned automatically.
 
 ## Optional Local Web UI (FastAPI + React)
 
@@ -126,6 +146,7 @@ uv run --extra ui zolai-tts-ui           # foreground, localhost:7860 by default
 
 # Frontend dev server (optional; proxies /api to the FastAPI server)
 bun run --cwd web dev                    # http://127.0.0.1:5174
+# …or let the CLI manage it: uv run zolai-tts web start|stop|status|logs|build
 ```
 
 - The UI is a local research surface, not a hosted production service. `--share`

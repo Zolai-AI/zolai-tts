@@ -43,9 +43,7 @@ def test_providers_payload_is_registry_driven(client: TestClient) -> None:
     assert "key_present" in providers["gemini"]
 
 
-def test_catalog_endpoint_uses_fetcher(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_catalog_endpoint_uses_fetcher(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_fetch(*args: Any, **kwargs: Any) -> ProviderCatalog:
         return ProviderCatalog(
             provider="openrouter",
@@ -69,9 +67,7 @@ def test_catalog_rejects_unknown_provider(client: TestClient) -> None:
     assert res.status_code == 404
 
 
-def test_dry_run_gemini_builds_request(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_dry_run_gemini_builds_request(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ZOLAI_TTS_GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     res = client.post(
@@ -87,12 +83,10 @@ def test_dry_run_gemini_builds_request(
     assert res.status_code == 200
     body = res.json()
     assert body["dry_run"] is True
-    assert body["plan"]["request"]["model"] == "gemini-3.8-flash-tts"
+    assert body["plan"]["request"]["model"] == "gemini-2.5-flash-preview-tts"
 
 
-def test_hosted_provider_requires_key(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_hosted_provider_requires_key(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ZOLAI_TTS_GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     res = client.post(
@@ -147,9 +141,7 @@ def test_synthesize_saves_audio_and_run_record(
     assert audio.content == b"RIFFfake"
 
 
-def test_synthesize_error_records_run(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_synthesize_error_records_run(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(*_a: Any, **_k: Any) -> Any:
         raise server.ProviderError("backend missing")
 

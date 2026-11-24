@@ -29,7 +29,7 @@ def test_import_creates_no_client_and_no_network(monkeypatch: pytest.MonkeyPatch
 
 def test_build_request_uses_v1beta_interactions_payload() -> None:
     request = gemini.build_interaction_request("Pasian", voice="Kore", language="zolai")
-    assert request["model"] == "gemini-3.8-flash-tts"
+    assert request["model"] == "gemini-2.5-flash-preview-tts"
     assert request["response_format"] == {"type": "audio"}
     assert request["generation_config"] == {"speech_config": [{"voice": "Kore"}]}
     assert "annotations" not in request
@@ -39,7 +39,7 @@ def test_model_config_resolution_default_gemini_model() -> None:
     from zolai_tts.ai_sdk.config import resolve_audio_config
 
     cfg = resolve_audio_config(provider="gemini", cli={"voice": "Kore", "language": "zolai"})
-    assert cfg.model == "gemini-3.8-flash-tts"
+    assert cfg.model == "gemini-2.5-flash-preview-tts"
     assert cfg.provider == "gemini"
 
 
@@ -66,9 +66,7 @@ def test_synthesize_decodes_base64_wav_via_fake_client(
     payload = base64.b64encode(b"RIFFfake-wav").decode("ascii")
     fake = SimpleNamespace(
         interactions=SimpleNamespace(
-            create=lambda **_kwargs: SimpleNamespace(
-                output_audio=SimpleNamespace(data=payload)
-            )
+            create=lambda **_kwargs: SimpleNamespace(output_audio=SimpleNamespace(data=payload))
         )
     )
     monkeypatch.setattr(gemini, "_client", lambda: fake)
@@ -88,31 +86,23 @@ def test_zolai_and_zomi_languages_warn_about_free_tier(
         "_client",
         lambda: SimpleNamespace(
             interactions=SimpleNamespace(
-                create=lambda **_kwargs: SimpleNamespace(
-                    output_audio=SimpleNamespace(data="")
-                )
+                create=lambda **_kwargs: SimpleNamespace(output_audio=SimpleNamespace(data="aGk="))
             )
         ),
     )
     for language in ("zolai", "zomi"):
         with pytest.warns(UserWarning) as warnings_record:
-            gemini.GeminiProvider(language=language).synthesize(
-                "hi", "Kore", tmp_path / "out.wav"
-            )
+            gemini.GeminiProvider(language=language).synthesize("hi", "Kore", tmp_path / "out.wav")
         assert "free-tier" in str(warnings_record[0].message)
 
 
-def test_english_language_does_not_warn(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_english_language_does_not_warn(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         gemini,
         "_client",
         lambda: SimpleNamespace(
             interactions=SimpleNamespace(
-                create=lambda **_kwargs: SimpleNamespace(
-                    output_audio=SimpleNamespace(data="")
-                )
+                create=lambda **_kwargs: SimpleNamespace(output_audio=SimpleNamespace(data="aGk="))
             )
         ),
     )

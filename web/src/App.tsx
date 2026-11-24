@@ -56,21 +56,30 @@ import {
   AudioPlayerTimeDisplay,
   AudioPlayerTimeRange,
 } from '@/components/ai-elements/audio-player'
+import { AudioLines, BadgeCheck, Mic, Settings, Wallet } from 'lucide-react'
+
 import { queryKeys } from '@/lib/api'
 import {
   useCatalogsQueries,
+  useHealthQuery,
+  useMetaQuery,
   useProvidersQuery,
   useRecordingsQuery,
   useRunsQuery,
   useSynthesizeMutation,
   useUploadRecordingMutation,
 } from '@/hooks/use-api'
+import { CostPanel } from '@/features/studio/cost-panel'
+import { ContributePanel } from '@/features/studio/contribute-panel'
+import { ReviewPanel } from '@/features/studio/review-panel'
+import { SettingsPanel } from '@/features/studio/settings-panel'
+import { ThemeToggle } from '@/components/theme-toggle'
 import type { Catalog, SynthesizeResponse } from '@/lib/types'
 
 const LANGUAGES = ['ted', 'zolai', 'zomi', 'en'] as const
 const CUSTOM = '__custom__' 
 
-function App() {
+function StudioView() {
   const queryClient = useQueryClient()
   const [provider, setProvider] = useState('piper')
   const [language, setLanguage] = useState('ted')
@@ -114,7 +123,6 @@ function App() {
   const modelInfo = catalog?.model_infos.find((item) => item.id === model)
   const voices = modelInfo?.voices.length ? modelInfo.voices : (catalog?.voices ?? [])
   const formats = modelInfo?.formats.length ? modelInfo.formats : (catalog?.formats ?? ['wav'])
-  const loading = providersQuery.isPending
   const error = providersQuery.error instanceof Error ? providersQuery.error.message : ''
   const synthMutation = useSynthesizeMutation({
     onSuccess: (response) => {
@@ -205,35 +213,13 @@ function App() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  
-
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 p-4 md:p-8">
-      <Toaster />
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">Zolai TTS Studio</h1>
-          <Badge variant="secondary">local research</Badge>
-          <Badge variant="outline">no key stored</Badge>
-        </div>
-        <p className="text-muted-foreground text-sm">
-          Local synthesis UI over the registered Zolai-TTS providers. Models, voices and
-          formats are fetched live from each provider. Piper is the real local voice;
-          hosted paths have no native Tedim/Zolai/Zomi support.
-        </p>
-      </header>
-
+    <div className="flex flex-col gap-6">
       {error ? (
         <Alert variant="destructive">
           <AlertTitle>Cannot reach the API</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      ) : null}
-
-      {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Spinner /> Loading providers and catalogs…
-        </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -581,6 +567,7 @@ function App() {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Source</TableHead>
+                    <TableHead>Note</TableHead>
                     <TableHead>Format</TableHead>
                     <TableHead>Bytes</TableHead>
                     <TableHead>Created</TableHead>
@@ -590,7 +577,8 @@ function App() {
                   {recordings.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.id}</TableCell>
-                      <TableCell className="max-w-48 truncate">{item.source_name}</TableCell>
+                      <TableCell className="max-w-48 truncate">{item.source}</TableCell>
+                      <TableCell className="max-w-48 truncate">{item.note}</TableCell>
                       <TableCell>{item.format}</TableCell>
                       <TableCell>{item.bytes}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">
@@ -615,4 +603,73 @@ function App() {
   )
 }
 
-export default App
+const NAV = [
+  { value: 'studio', label: 'Studio', icon: AudioLines },
+  { value: 'review', label: 'Sound check', icon: BadgeCheck },
+  { value: 'contribute', label: 'Contribute', icon: Mic },
+  { value: 'cost', label: 'Cost', icon: Wallet },
+  { value: 'settings', label: 'Settings', icon: Settings },
+] as const
+
+type View = (typeof NAV)[number]['value']
+
+export default function App() {
+  const [view, setView] = useState<View>('studio')
+  const meta = useMetaQuery()
+  const health = useHealthQuery()
+  const providers = meta.data?.providers ?? []
+
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 p-4 md:p-8">
+      <Toaster />
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-semibold tracking-tight">Zolai TTS Studio</h1>
+          <p className="text-muted-foreground text-sm">
+            Local research studio for Tedim Zolai speech synthesis. Catalogs, voices, costs and
+            recordings come from the studio API; keys stay in memory.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={health.data?.ok ? 'secondary' : 'destructive'}>
+            {health.data?.ok ? 'API online' : 'API offline'}
+          </Badge>
+          <Badge variant="outline">{health.isPending ? 'checking…' : `v${health.data?.version ?? ''}`}</Badge>
+          <ThemeToggle />
+        </div>
+      </header>
+
+      <div className="grid gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <nav className="flex flex-row gap-1 lg:flex-col">
+          {NAV.map((item) => (
+            <Button
+              key={item.value}
+              variant={view === item.value ? 'secondary' : 'ghost'}
+              className="justify-start"
+              onClick={() => setView(item.value)}
+            >
+              <item.icon className="size-4" />
+              {item.label}
+            </Button>
+          ))}
+          <Separator className="my-2 hidden lg:block" />
+          <div className="hidden flex-col gap-1 text-xs text-muted-foreground lg:flex">
+            <p>db: {health.data?.database?.dialect ?? '—'}</p>
+            <p>audio: {health.data?.storage?.active ?? '—'}</p>
+            <p>{meta.data ? `${meta.data.counts?.runs ?? 0} runs` : ''}</p>
+          </div>
+        </nav>
+
+        <main className="min-w-0">
+          {view === 'studio' ? <StudioView /> : null}
+          {view === 'review' ? <ReviewPanel /> : null}
+          {view === 'contribute' ? (
+            <ContributePanel languages={meta.data?.languages ?? []} />
+          ) : null}
+          {view === 'cost' ? <CostPanel /> : null}
+          {view === 'settings' ? <SettingsPanel providers={providers} /> : null}
+        </main>
+      </div>
+    </div>
+  )
+}

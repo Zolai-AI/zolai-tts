@@ -12,9 +12,7 @@ def to_ljspeech(records: Iterable[Mapping[str, Any]], out_path: Path) -> int:
     """Write ``id|text_normalized|`` lines and return the record count."""
     lines = [f"{record['id']}|{record['text_normalized']}|" for record in records]
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8"
-    )
+    out_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return len(lines)
 
 
@@ -32,7 +30,5 @@ def to_piper(records: Iterable[Mapping[str, Any]], out_path: Path) -> int:
         for record in records
     ]
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8"
-    )
+    out_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return len(lines)

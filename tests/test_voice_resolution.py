@@ -97,16 +97,13 @@ class TestApiSuccess:
         import urllib.request
 
         def fake_urlopen(request, timeout=None):  # noqa: ANN001
-            raise urllib.error.HTTPError(
-                request.full_url, 404, "Not Found", {}, None
-            )
+            raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, None)
 
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
         # Even with a store present, an authoritative 404 must not silently
         # resolve to anything else.
         with pytest.raises(VoiceNotFoundError, match="unknown voice_key"):
-            resolve_voice("seed-voice-1", api_base="http://api.test",
-                          db_path=str(voice_db))
+            resolve_voice("seed-voice-1", api_base="http://api.test", db_path=str(voice_db))
 
 
 class TestSqliteFallback:
@@ -120,8 +117,7 @@ class TestSqliteFallback:
             raise urllib.error.URLError("connection refused")
 
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
-        voice = resolve_voice("seed-voice-1", api_base="http://api.test",
-                              db_path=str(voice_db))
+        voice = resolve_voice("seed-voice-1", api_base="http://api.test", db_path=str(voice_db))
         assert voice.source == "sqlite"
         assert voice.legal_status == "unverified"
         assert voice.provider == "openrouter"
@@ -151,9 +147,7 @@ class TestSqliteFallback:
         assert opened, "expected a sqlite connection"
         assert all("mode=ro" in uri for uri in opened)
 
-    def test_env_var_fallback_path(
-        self, monkeypatch: pytest.MonkeyPatch, voice_db: Path
-    ) -> None:
+    def test_env_var_fallback_path(self, monkeypatch: pytest.MonkeyPatch, voice_db: Path) -> None:
         monkeypatch.setenv("ZOLAI_DB_PATH", str(voice_db))
         voice = resolve_voice("seed-voice-1", offline=True)
         assert voice.voice_key == "seed-voice-1"
@@ -185,9 +179,7 @@ class TestFailLoud:
         with pytest.raises(VoiceNotFoundError, match="inactive"):
             resolve_voice("retired", offline=True, db_path=str(voice_db))
 
-    def test_api_down_and_no_store_is_loud(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_api_down_and_no_store_is_loud(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import urllib.error
         import urllib.request
 
@@ -196,5 +188,4 @@ class TestFailLoud:
 
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
         with pytest.raises(VoiceLookupError, match="unreachable"):
-            resolve_voice("seed-voice-1", api_base="http://api.test",
-                          db_path="/nonexistent.db")
+            resolve_voice("seed-voice-1", api_base="http://api.test", db_path="/nonexistent.db")

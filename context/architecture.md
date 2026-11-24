@@ -69,14 +69,14 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 ## Invariants
 
 1. Framework-first: Tedim language logic in `frontend/`, synthesis delegated to adapters (source: `docs/architecture.md`).
-2. Framework-specific code stays in `providers/` and `configs/`; config/model resolution and optional AI adapters live in `ai_sdk/`; optional local UI stays in `ui/`; management CLI/runtime orchestrates existing modules and does not duplicate synthesis logic. No from-scratch model implementation (source: `docs/architecture.md`).
+2. Framework-specific code stays in `providers/` and `configs/`; config/model resolution and optional AI adapters live in `ai_sdk/`; the web API lives in `server.py` and the React frontend in `web/`; management CLI/runtime orchestrates existing modules and does not duplicate synthesis logic. No from-scratch model implementation (source: `docs/architecture.md`).
 3. Large audio and checkpoints stay outside git (source: `docs/architecture.md`, AGENTS.md).
 4. Dataset schemas are versioned in `dataset/schemas/` (source: `docs/architecture.md`).
 5. ZVS 2018 is ground truth by reference to `zolai-core`; no cross-repo copy or invented phonology/numerals (source: `docs/pronunciation.md`).
-6. Base imports make no network call, read no key and import no optional backend/UI package (source: `src/zolai_tts`, `tests/test_gemini.py`, `src/zolai_tts/ui/app.py`).
+6. Base imports make no network call, read no key and import no optional backend/UI package (source: `src/zolai_tts`, `tests/test_gemini.py`, `src/zolai_tts/server.py`).
 7. Canonical provider keys are exactly `piper`, `gemini`, and `openrouter`; there is no `local` alias (source: `src/zolai_tts/inference/base.py`).
 8. Piper is the real Zolai voice; Gemini/OpenRouter use `ted`/`zolai`/`zomi` only as experimental demos with explicit warnings and no native Tedim support claims (source: `src/zolai_tts/providers/gemini.py`, `src/zolai_tts/providers/openrouter.py`, README.md).
-9. Optional UI is local research/demo only: localhost bind, `share=False` default, no auth/production claims; mic/upload is local OSS wiring and not persisted/uploaded by default (source: `src/zolai_tts/ui/app.py`, README.md).
+9. The web studio is local research/demo only: localhost bind, `share=False` default, no auth/production claims; mic/upload recordings are stored locally with sidecar metadata and never uploaded (source: `src/zolai_tts/server.py`, `web/src/App.tsx`, README.md).
 10. Runtime/process state and logs live outside git (preferred `/tmp/opencode/zolai-tts-<uid>/`, fallback XDG runtime/cache) and must never persist API keys, tokens, or secret values (source: `src/zolai_tts/runtime.py`, `src/zolai_tts/cli.py`).
 11. Config precedence is CLI > config YAML > environment > defaults; API keys are env-only at call time and redacted in logs/doctor/dry-run/config views (source: `src/zolai_tts/ai_sdk/config.py`).
 12. Hosted providers have quotas/free-tier/data-use limits and no unlimited-free claims; do not send community data without informed consent (source: README.md).

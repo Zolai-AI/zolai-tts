@@ -21,9 +21,7 @@ def test_unknown_provider_error_names_canonical_keys() -> None:
 
 
 def test_synthesis_result_is_frozen() -> None:
-    result = SynthesisResult(
-        out_path=Path("a.wav"), provider="piper", voice="v"
-    )
+    result = SynthesisResult(out_path=Path("a.wav"), provider="piper", voice="v")
     with pytest.raises(FrozenInstanceError):
         result.provider = "gemini"  # type: ignore[misc]
 

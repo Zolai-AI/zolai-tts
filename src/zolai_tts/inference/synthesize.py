@@ -65,6 +65,12 @@ def _plan(
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Console-script entry point for ``zolai-tts-synth``."""
+    # Make provider keys / model overrides from the project .env visible to
+    # env readers (exported vars win; see zolai_tts/env.py).
+    from zolai_tts.env import ensure_loaded
+
+    ensure_loaded()
+
     parser = argparse.ArgumentParser(
         prog="zolai-tts-synth",
         description="Synthesize speech through a registered TTS provider.",
@@ -76,7 +82,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--language", choices=("ted", "zolai", "zomi", "en"))
     parser.add_argument(
         "--model",
-        help="Provider model id (e.g. gemini-3.8-flash-tts, openai/gpt-4o-mini-tts)",
+        help="Provider model id (e.g. gemini-2.5-flash-preview-tts, openai/gpt-4o-mini-tts)",
     )
     parser.add_argument("--base-url", help="Optional OpenAI-compatible base URL override")
     parser.add_argument(

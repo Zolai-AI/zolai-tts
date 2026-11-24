@@ -88,7 +88,5 @@ def get_provider(name: str, **options: Any) -> TTSProvider:
         factory = _REGISTRY[name]
     except KeyError:
         available = ", ".join(sorted(_REGISTRY))
-        raise ValueError(
-            f"Unknown provider {name!r}. Available providers: {available}"
-        ) from None
+        raise ValueError(f"Unknown provider {name!r}. Available providers: {available}") from None
     return factory(**options)

@@ -4,6 +4,7 @@ This is intentionally lightweight: PydanticAI is primarily agent-oriented; we us
 it for model string/config validation and metadata wiring where available.
 Lazy import, no base dependency.
 """
+
 from __future__ import annotations
 
 from typing import Any
