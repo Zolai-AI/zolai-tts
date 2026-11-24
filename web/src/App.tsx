@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Alert,
@@ -55,75 +56,14 @@ import {
   AudioPlayerTimeDisplay,
   AudioPlayerTimeRange,
 } from '@/components/ai-elements/audio-player'
-
-type ProviderInfo = {
-  name: string
-  label: string
-  voice_kind: 'path' | 'name'
-  hosted: boolean
-  note?: string
-  key_env?: string | null
-  key_present: boolean
-}
-type ModelInfo = { id: string; name: string; voices: string[]; formats: string[] }
-type Catalog = {
-  provider: string
-  models: string[]
-  model_infos: ModelInfo[]
-  voices: string[]
-  formats: string[]
-  source: string
-  error: string | null
-  key_env: string | null
-  key_present: boolean
-}
-type Run = {
-  id: string
-  ok: boolean
-  provider: string
-  voice: string
-  language: string
-  model?: string | null
-  format?: string
-  audio_url?: string
-  duration_seconds?: number | null
-  created_at: string
-  error?: string
-}
-type Recording = {
-  id: string
-  saved_path: string
-  audio_url: string
-  mime: string
-  format: string
-  bytes: number
-  created_at: string
-  source_name: string
-  context: { provider?: string; model?: string; voice?: string; note?: string }
-}
-type SynthResponse = {
-  ok: boolean
-  dry_run?: boolean
-  plan?: Record<string, unknown>
-  run?: Run
-  error?: string
-}
+import { api, queryKeys } from '@/lib/api'
+import type { Catalog, SynthesizeRequest, SynthesizeResponse } from '@/lib/types'
 
 const LANGUAGES = ['ted', 'zolai', 'zomi', 'en'] as const
-const CUSTOM = '__custom__'
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init)
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok || body.ok === false) {
-    throw new Error(String(body.error ?? `Request failed (${response.status})`))
-  }
-  return body as T
-}
+const CUSTOM = '__custom__' 
 
 function App() {
-  const [providers, setProviders] = useState<ProviderInfo[]>([])
-  const [catalogs, setCatalogs] = useState<Record<string, Catalog>>({})
+  const queryClient = useQueryClient()
   const [provider, setProvider] = useState('piper')
   const [language, setLanguage] = useState('ted')
   const [model, setModel] = useState('')
@@ -134,82 +74,79 @@ function App() {
   const [customVoice, setCustomVoice] = useState('')
   const [text, setText] = useState('Dam maw? Zomi')
   const [dryRun, setDryRun] = useState(true)
-  const [result, setResult] = useState<SynthResponse | null>(null)
-  const [runs, setRuns] = useState<Run[]>([])
-  const [recordings, setRecordings] = useState<Recording[]>([])
+  const [result, setResult] = useState<SynthesizeResponse | null>(null)
   const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const lastProvider = useRef('')
+
+  const providersQuery = useQuery({
+    queryKey: queryKeys.providers,
+    queryFn: api.providers,
+  })
+  const providers = providersQuery.data?.providers ?? []
+  useEffect(() => {
+    if (!providers.length) return
+    setProvider((current) =>
+      providers.some((item) => item.name === current)
+        ? current
+        : (providers.find((item) => !item.hosted)?.name ?? providers[0].name),
+    )
+  }, [providers])
+
+  const catalogQueries = useQueries({
+    queries: providers.map((item) => ({
+      queryKey: queryKeys.catalog(item.name),
+      queryFn: () => api.catalog(item.name),
+      enabled: providers.length > 0,
+    })),
+  })
+  const catalogs = Object.fromEntries(
+    catalogQueries.flatMap((query) => {
+      const catalog = query.data?.catalog
+      return catalog ? [[catalog.provider, catalog] as const] : []
+    }),
+  ) as Record<string, Catalog>
+
+  const runsQuery = useQuery({ queryKey: queryKeys.runs, queryFn: api.runs })
+  const recordingsQuery = useQuery({
+    queryKey: queryKeys.recordings,
+    queryFn: api.recordings,
+  })
 
   const activeProvider = providers.find((item) => item.name === provider)
   const catalog = catalogs[provider]
   const modelInfo = catalog?.model_infos.find((item) => item.id === model)
   const voices = modelInfo?.voices.length ? modelInfo.voices : (catalog?.voices ?? [])
   const formats = modelInfo?.formats.length ? modelInfo.formats : (catalog?.formats ?? ['wav'])
+  const loading = providersQuery.isPending
+  const error = providersQuery.error instanceof Error ? providersQuery.error.message : ''
+  const synthMutation = useMutation({
+    mutationFn: (payload: SynthesizeRequest) => api.synthesize(payload),
+    onSuccess: async (response) => {
+      setResult(response)
+      toast.success(response.dry_run ? 'Dry run ready' : 'Synthesis complete')
+      await queryClient.invalidateQueries({ queryKey: queryKeys.runs })
+    },
+    onError: (cause) => {
+      toast.error(cause instanceof Error ? cause.message : String(cause))
+    },
+  })
 
-  async function refreshCatalogs(names: string[]) {
-    const entries = await Promise.all(
-      names.map(async (name) => {
-        try {
-          const response = await api<{ catalog: Catalog }>(
-            `/api/providers/${encodeURIComponent(name)}/catalog`,
-          )
-          return [name, response.catalog] as const
-        } catch {
-          return [name, null] as const
-        }
-      }),
-    )
-    setCatalogs(
-      Object.fromEntries(
-        entries.filter((entry): entry is readonly [string, Catalog] => entry[1] !== null),
-      ),
-    )
-  }
+  const uploadMutation = useMutation({
+    mutationFn: (form: FormData) => api.uploadRecording(form),
+    onSuccess: async () => {
+      toast.success('Recording saved locally')
+      setNote('')
+      await queryClient.invalidateQueries({ queryKey: queryKeys.recordings })
+    },
+    onError: (cause) => {
+      toast.error(cause instanceof Error ? cause.message : String(cause))
+    },
+  })
 
-  async function refreshLists() {
-    try {
-      const [runList, recList] = await Promise.all([
-        api<{ runs: Run[] }>('/api/runs'),
-        api<{ recordings: Recording[] }>('/api/recordings'),
-      ])
-      setRuns(runList.runs)
-      setRecordings(recList.recordings)
-    } catch {
-      // Lists are non-critical; the main action still works.
-    }
-  }
-
-  useEffect(() => {
-    let cancelled = false
-    async function bootstrap() {
-      setLoading(true)
-      setError('')
-      try {
-        const response = await api<{ providers: ProviderInfo[] }>('/api/providers')
-        if (cancelled) return
-        setProviders(response.providers)
-        const initial =
-          response.providers.find((item) => !item.hosted)?.name ??
-          response.providers[0]?.name ??
-          'piper'
-        setProvider(initial)
-        await refreshCatalogs(response.providers.map((item) => item.name))
-        await refreshLists()
-      } catch (cause) {
-        if (!cancelled) setError(String(cause))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    void bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const busy = synthMutation.isPending || uploadMutation.isPending
+  const runs = runsQuery.data?.runs ?? []
+  const recordings = recordingsQuery.data?.recordings ?? []
 
   useEffect(() => {
     if (!catalog || lastProvider.current === provider) return
@@ -236,41 +173,31 @@ function App() {
       toast.error('Text is required.')
       return
     }
-    setBusy(true)
-    try {
-      const response = await api<SynthResponse>('/api/synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          text,
-          language,
-          voice: customVoice || voice,
-          model: customModel || model || null,
-          response_format: format,
-          base_url: baseUrl || null,
-          dry_run: dryRun,
-        }),
-      })
-      setResult(response)
-      toast.success(dryRun ? 'Dry run ready' : 'Synthesis complete')
-      await refreshLists()
-    } catch (cause) {
-      toast.error(String(cause))
-    } finally {
-      setBusy(false)
-    }
+    await synthMutation.mutateAsync({
+      provider,
+      text,
+      language,
+      voice: customVoice || voice,
+      model: customModel || model || null,
+      response_format: format,
+      base_url: baseUrl || null,
+      dry_run: dryRun,
+    })
   }
 
   async function onRefresh() {
-    setBusy(true)
     try {
-      await refreshCatalogs(providers.map((item) => item.name))
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.providers }),
+        ...providers.map((item) =>
+          queryClient.refetchQueries({ queryKey: queryKeys.catalog(item.name) }),
+        ),
+        queryClient.invalidateQueries({ queryKey: queryKeys.runs }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.recordings }),
+      ])
       toast.success('Catalogs refreshed')
     } catch (cause) {
-      toast.error(String(cause))
-    } finally {
-      setBusy(false)
+      toast.error(cause instanceof Error ? cause.message : String(cause))
     }
   }
 
@@ -282,16 +209,11 @@ function App() {
     body.append('model', customModel || model)
     body.append('voice', customVoice || voice)
     body.append('note', note)
-    try {
-      await api('/api/recordings', { method: 'POST', body })
-      toast.success('Recording saved locally')
-      setNote('')
-      await refreshLists()
-    } catch (cause) {
-      toast.error(String(cause))
-    }
+    await uploadMutation.mutateAsync(body)
     if (fileRef.current) fileRef.current.value = ''
   }
+
+  
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 p-4 md:p-8">
