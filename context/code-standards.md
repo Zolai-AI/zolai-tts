@@ -27,6 +27,14 @@
 - UI is local research/demo only: bind localhost, default `share=False`, no auth/production claims, no persistent queue. Do not add cloud sharing by default (source: `src/zolai_tts/ui/app.py`).
 - UI tests must `pytest.importorskip("gradio")`, must not launch a server, and must not make network calls (source: `tests/test_ui.py`).
 
+## CLI / Runtime
+
+- `zolai-tts` is the management CLI (`src/zolai_tts/cli.py`) with subcommands for `menu`, `ui start|stop|restart|status|logs|open`, `doctor`, `check|test|lint|typecheck`, `prepare`, `synth`, `ui-app`, and `gemini-smoke`. It orchestrates existing modules via subprocess/module calls; it must not duplicate synthesis logic.
+- Runtime state/logs are stored outside git (preferred `/tmp/opencode/zolai-tts-<uid>/`, fallback XDG runtime/cache). State JSON contains only PID/host/port/cmd/started_at/log_path/cwd; never store API keys, tokens, or secret values.
+- `doctor` and `gemini-smoke` report environment key presence only and must never print or persist secret values. `gemini-smoke --live` is opt-in and uses quota/network.
+- UI process management must validate PID and cmdline contains `zolai_tts.ui.app` before trusting state; clean stale state.
+- CLI/runtime tests must be offline: mock subprocess, os.kill, xdg-open, env, and time; use temp state dirs.
+
 ## API Routes
 
 - N/A — no service endpoints; this is an offline CLI/tooling slice (source: `docs/architecture.md`).

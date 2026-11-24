@@ -68,15 +68,16 @@ uv run --extra dev python -m pytest            # offline; live Gemini test skipp
 uv run --extra dev python -m ruff check src tests
 uv run --extra dev python -m mypy src
 
+uv run zolai-tts --help
+uv run zolai-tts doctor
 uv run zolai-tts-prepare --help
 uv run zolai-tts-synth --help
 
 mkdir -p /tmp/opencode/zolai-tts/out
-uv run zolai-tts-prepare \
-  --input dataset/metadata/sample.jsonl \
+uv run zolai-tts prepare -- --input dataset/metadata/sample.jsonl \
   --schema dataset/schemas/utterance.schema.json \
   --out-dir /tmp/opencode/zolai-tts/out --format piper
-uv run zolai-tts-synth --text "Pasian in leitung a piangsak hi." \
+uv run zolai-tts synth -- --text "Pasian in leitung a piangsak hi." \
   --provider piper --voice /replace/with/real/zolai-voice.onnx \
   --language zolai --out /tmp/opencode/zolai-tts/out/synth.wav --dry-run
 ```
@@ -84,12 +85,33 @@ uv run zolai-tts-synth --text "Pasian in leitung a piangsak hi." \
 `--dry-run` writes no audio and needs no key or backend. Real synthesis requires a
 real ONNX voice supplied via `--voice`; none is committed.
 
+## Menu CLI & Local UI Management
+
+```bash
+uv run zolai-tts --help
+uv run zolai-tts menu
+uv run zolai-tts doctor
+uv run zolai-tts ui start --host 127.0.0.1 --port 7860
+uv run zolai-tts ui status
+uv run zolai-tts ui logs --lines 40
+uv run zolai-tts ui open            # prints URL; add --launch to use xdg-open
+uv run zolai-tts ui stop
+uv run zolai-tts ui restart
+uv run zolai-tts check              # ruff + mypy + pytest
+uv run zolai-tts gemini-smoke       # env key presence only; --live is opt-in
+```
+
+- The CLI orchestrates existing modules; it does not duplicate synthesis logic.
+- UI lifecycle state/logs are stored outside git in `/tmp/opencode/zolai-tts-<uid>/` (fallback: XDG runtime/cache dir). State files contain PID/host/port/cmd metadata only — **no API keys or secrets**.
+- `doctor` and `gemini-smoke` report env key presence only; they never print or persist secret values. `gemini-smoke --live` is opt-in and uses quota.
+- `ui start` runs `python -m zolai_tts.ui.app` in background and validates PID/cmdline on status.
+
 ## Optional Local UI (Gradio)
 
 ```bash
 uv sync --extra dev --extra ui
 uv run --extra ui zolai-tts-ui --help
-uv run --extra ui zolai-tts-ui  # local only, share=False by default
+uv run --extra ui zolai-tts-ui  # foreground, local only, share=False by default
 ```
 
 - The UI is a lightweight local research/demo surface; it is not a hosted production service.

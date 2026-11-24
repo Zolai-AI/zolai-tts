@@ -25,6 +25,7 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 - `src/zolai_tts/inference/` — implemented `TTSProvider` protocol, frozen `SynthesisResult`, canonical registry and synthesis CLI (source: `src/zolai_tts/inference/`).
 - `src/zolai_tts/providers/` — implemented Piper adapter (real voice) and optional Gemini adapter (source: `src/zolai_tts/providers/`).
 - `src/zolai_tts/ui/` — optional local Gradio research/demo UI over existing provider contracts; lazy Gradio import, localhost/`share=False` default, not a hosted production service (source: `src/zolai_tts/ui/app.py`, `pyproject.toml`).
+- `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py` — management CLI and UI process runtime control (start/stop/restart/status/logs/doctor/check/passthroughs). Orchestrates existing modules only; runtime state/logs outside git; no secret persistence (source: `src/zolai_tts/cli.py`, `src/zolai_tts/runtime.py`).
 - `src/zolai_tts/evaluation/` — implemented duration helper and Markdown report renderer (source: `src/zolai_tts/evaluation/`).
 - `configs/`, `dataset/schemas/`, `dataset/metadata/` — committed example config, versioned schemas and placeholder metadata (source: `configs/`, `dataset/`).
 - `tests/` — offline pytest suite plus opt-in `live` marker (source: `pyproject.toml`, `tests/`).
@@ -60,7 +61,7 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 ## Invariants
 
 1. Framework-first: Tedim language logic in `frontend/`, synthesis delegated to adapters (source: `docs/architecture.md`).
-2. Framework-specific code stays in `providers/` and `configs/`; optional local UI stays in `ui/` as an extra. No from-scratch model implementation (source: `docs/architecture.md`).
+2. Framework-specific code stays in `providers/` and `configs/`; optional local UI stays in `ui/`; management CLI/runtime orchestrates existing modules and does not duplicate synthesis logic. No from-scratch model implementation (source: `docs/architecture.md`).
 3. Large audio and checkpoints stay outside git (source: `docs/architecture.md`, AGENTS.md).
 4. Dataset schemas are versioned in `dataset/schemas/` (source: `docs/architecture.md`).
 5. ZVS 2018 is ground truth by reference to `zolai-core`; no cross-repo copy or invented phonology/numerals (source: `docs/pronunciation.md`).
@@ -68,3 +69,4 @@ Stack names come from `pyproject.toml`, `project.yaml` and `docs/architecture.md
 7. Canonical provider keys are exactly `piper` and `gemini`; there is no `local` alias (source: `src/zolai_tts/inference/base.py`).
 8. Piper is the real Zolai voice; Gemini uses `ted`/`zolai`/`zomi` only as experimental demos with a free-tier/consent warning (source: `src/zolai_tts/providers/gemini.py`, README.md).
 9. Optional UI is local research/demo only: localhost bind, `share=False` default, no auth/production claims (source: `src/zolai_tts/ui/app.py`, README.md).
+10. Runtime/process state and logs live outside git (preferred `/tmp/opencode/zolai-tts-<uid>/`, fallback XDG runtime/cache) and must never persist API keys, tokens, or secret values (source: `src/zolai_tts/runtime.py`, `src/zolai_tts/cli.py`).

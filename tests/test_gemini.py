@@ -20,9 +20,11 @@ def test_import_creates_no_client_and_no_network(monkeypatch: pytest.MonkeyPatch
     def banned(*_args: object, **_kwargs: object) -> object:
         raise AssertionError("env read or network at import time")
 
+    before = set(sys.modules)
     monkeypatch.setattr(os, "getenv", banned)
     importlib.reload(gemini)
-    assert "google" not in sys.modules
+    new_google = [m for m in sys.modules if m.startswith("google") and m not in before]
+    assert not new_google
 
 
 def test_build_request_uses_v1beta_interactions_payload() -> None:
