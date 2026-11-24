@@ -18,6 +18,7 @@ Update this file after every meaningful implementation change.
 - 2026-11-24 — Updated README, `docs/architecture.md`, `docs/framework-selection.md`, `docs/dataset-guidelines.md`, `docs/pronunciation.md`, `context/architecture.md`, `context/code-standards.md`, `context/project-overview.md`, this tracker, CHANGELOG, and absorbed `.ignore`.
 - Prior — replaced six context scaffolds with committed HEAD evidence; aligned with canonical workspace SDLC and source-of-truth (source: git history).
 - 2026-11-24 — Corrected stale HEAD-state claims in `context/ai-workflow-rules.md` (implemented `src/`, tracked `uv.lock`, committed `dataset/`/`configs/`, `docs/` status) and recorded local pytest environment divergence here. Files: `context/ai-workflow-rules.md`, `context/progress-tracker.md`. Impact: workflow rules match the implemented scaffold; no runtime behavior changed.
+- 2026-11-24 — Added an UNKNOWN-by-default IPA research scaffold for the seven ZVS-attested digraphs; no IPA values asserted and G2P/phonemizer left unchanged. Files: `src/zolai_tts/frontend/ipa_research.py`, `tests/test_ipa_research.py`, `context/progress-tracker.md`. Impact: research-only placeholder mapping with offline tests; linguist verification required before any canonical use.
 
 ## In Progress
 
